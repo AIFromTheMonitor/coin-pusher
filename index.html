@@ -358,16 +358,22 @@ function createWall(sideX){
 // Created after world init below
 
 // ─── PHYSICS ───────────────────────────────
+const PHYSICS_HZ = 30;
+const PHYSICS_DT = 1 / PHYSICS_HZ;
 const world = new RAPIER.World({x:0, y:-9.81, z:0});
+world.timestep = PHYSICS_DT;
 
 // Lower shelf surface
 world.createCollider(RAPIER.ColliderDesc.cuboid(SW/2, 0.02, SD/2).setFriction(0.45),
   world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, shelfTop - 0.02, 0)));
+// Safety floor behind back wall — catches coins that go over/under
+world.createCollider(RAPIER.ColliderDesc.cuboid(SW/2+0.5, 0.02, 1.2).setFriction(0.45),
+  world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, shelfTop - 0.02, -SD/2 - 0.8)));
 
-// Side walls (lower)
+// Side walls — tall enough to contain coins bouncing off back wall
 [[-SW/2-0.04],[SW/2+0.04]].forEach(([x])=>{
-  world.createCollider(RAPIER.ColliderDesc.cuboid(0.04, 0.3, SD/2).setFriction(0.3),
-    world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, shelfTop+0.1, 0)));
+  world.createCollider(RAPIER.ColliderDesc.cuboid(0.06, 0.6, SD/2 + 0.5).setFriction(0.3),
+    world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, shelfTop+0.35, 0)));
 });
 
 // Coin wall power-up walls (kinematic, hidden below)
@@ -379,22 +385,27 @@ const platPhys = world.createRigidBody(
   RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, PLAT_TOP - 0.02, PLAT_Z_MIN)
 );
 world.createCollider(
-  RAPIER.ColliderDesc.cuboid(PLAT_W/2, 0.08, PLAT_D/2).setFriction(0.4).setRestitution(0.01),
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2, 0.16, PLAT_D/2).setFriction(0.4).setRestitution(0.01),
   platPhys
 );
 
 // Front pusher face — pushes both lower shelf + platform-top coins
 world.createCollider(
-  RAPIER.ColliderDesc.cuboid(PLAT_W/2 - 0.1, 0.165, 0.03)
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2 - 0.1, 0.165, 0.06)
     .setTranslation(0, -0.145, PLAT_D/2)
     .setFriction(0.2).setRestitution(0.01),
   platPhys
 );
 
-// Fixed back wall
+// Fixed back wall — positioned behind platform with safe gap
 world.createCollider(
-  RAPIER.ColliderDesc.cuboid(PLAT_W/2 + 0.1, BACK_H/2, 0.05).setFriction(0.3).setRestitution(0.01),
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2 + 0.1, BACK_H/2, 0.25).setFriction(0.3).setRestitution(0.01),
   world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, PLAT_TOP + BACK_H/2, BACK_Z))
+);
+// Ceiling above back wall — stops coins from bouncing over
+world.createCollider(
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2 + 0.1, 0.02, 0.25).setFriction(0.1).setRestitution(0.01),
+  world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, PLAT_TOP + BACK_H + 0.08, BACK_Z))
 );
 
 // ─── COINS ─────────────────────────────────
@@ -427,7 +438,7 @@ function spawnCoin(x, y, z, type, velX=0, velY=0, velZ=0){
   mesh.position.set(x, y, z);
   scene.add(mesh);
   const body = world.createRigidBody(
-    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(velX, velY, velZ).setLinearDamping(0.06).setAngularDamping(0.35)
+    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(velX, velY, velZ).setLinearDamping(0.06).setAngularDamping(0.35).setCcdEnabled(true)
   );
   // Cylinder collider for all types (no more rolling spheres!)
   world.createCollider(RAPIER.ColliderDesc.cylinder(colHalfH, colRadius).setFriction(0.4).setRestitution(type==='diamond'||type==='gem'?0.04:0.02).setDensity(density), body);
@@ -490,7 +501,7 @@ function dropCoin(){
   const x = dropX + (Math.random()-0.5)*0.3;
   const z = SD/2 - 0.3;  // Front of machine, above shelf
   const y = shelfTop + 0.3;  // Above shelf surface
-  spawnCoin(x, y, z, 'coin', 0, 4.0, -7.5);  // High arc to back wall: 0.82s flight, peaks at y≈0.4
+  spawnCoin(x, y, z, 'coin', 0, 4.0, -6.0);  // Gentler arc — lands on platform rear without going under wall
   playSound(400, 0.08);
   indMat.opacity = 1.0;
   setTimeout(() => indMat.opacity = 0.7, 100);
@@ -510,7 +521,7 @@ function spawnGiantCoin(){
   mesh.position.set(x, y, z);
   scene.add(mesh);
   const body = world.createRigidBody(
-    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(0, 0, 2.0).setLinearDamping(0.03).setAngularDamping(0.2)
+    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(0, 0, 2.0).setLinearDamping(0.03).setAngularDamping(0.2).setCcdEnabled(true)
   );
   world.createCollider(RAPIER.ColliderDesc.cylinder(GCH/2, GCR).setFriction(0.4).setRestitution(0.05).setDensity(6.0), body);
   meshes.set(body.handle, mesh);
@@ -529,7 +540,7 @@ function spawnSpecialDrop(type){
 }
 
 // ─── PLATFORM ANIMATION ────────────────────
-const CYCLE = 3.2;
+const CYCLE = 5.0;  // Slower cycle — gentler pushing
 
 function updatePlatform(dt){
   if(!gameStarted) return;
@@ -735,58 +746,70 @@ function updateCoinWall(dt){
 }
 
 // ─── GAME LOOP ─────────────────────────────
-let lastT=performance.now();
-function loop(time){
-  const dt=Math.min((time-lastT)/1000,0.05);
-  lastT=time;
-  
-  world.step();
-  updatePlatform(dt);
-  updateCoinWall(dt);
-  
-  // Animate sparkles
+let lastT = performance.now();
+let physAccum = 0;
+
+function loop(time) {
+  const rawDt = (time - lastT) / 1000;
+  const dt = Math.min(rawDt, 0.1);  // cap spike, allow catch-up
+  lastT = time;
+  physAccum += dt;
+
+  // Step physics at fixed 30Hz
+  let stepped = false;
+  while (physAccum >= PHYSICS_DT) {
+    world.step();
+    updatePlatform(PHYSICS_DT);
+    updateCoinWall(PHYSICS_DT);
+    physAccum -= PHYSICS_DT;
+    stepped = true;
+  }
+
   const sparkTime = performance.now() * 0.001;
-  animateSparkles(titleSpark, sparkTime);
-  animateSparkles(wallSparkL, sparkTime);
-  animateSparkles(wallSparkR, sparkTime);
-  animateSparkles(backSpark, sparkTime);
-  animateSparkles(frontSpark, sparkTime);
-  
-  // Auto-drop: fire every 4s, advance shooter by AUTO_STEP each shot
+
+  // Update visuals only when physics actually stepped
+  if (stepped) {
+    animateSparkles(titleSpark, sparkTime);
+    animateSparkles(wallSparkL, sparkTime);
+    animateSparkles(wallSparkR, sparkTime);
+    animateSparkles(backSpark, sparkTime);
+    animateSparkles(frontSpark, sparkTime);
+
+    const toRemove = [];
+    for (const [h, mesh] of meshes) {
+      const body = bodies.get(mesh.uuid);
+      if (!body) continue;
+      try {
+        const p = body.translation(), r = body.rotation();
+        mesh.position.set(p.x, p.y, p.z);
+        mesh.quaternion.set(r.x, r.y, r.z, r.w);
+        if (gameStarted && p.y < COLLECT_Y) toRemove.push({mesh, body});
+      } catch(e) {}
+    }
+    toRemove.sort((a, b) => a.mesh.position.y - b.mesh.position.y);
+    toRemove.forEach(({mesh, body}) => collectCoin(mesh, body));
+  }
+
+  // Combo timeout (runs every frame — cheap)
+  if (combo > 0 && performance.now() - lastCol > 3000) {
+    combo = 0;
+    document.getElementById('combo').style.opacity = 0;
+  }
+
+  // Auto-drop (runs every frame — simple time check)
   if (autoMode && gameStarted && time - autoLastDrop > 4000) {
     if (tokens > 0) {
       dropCoin();
       autoLastDrop = time;
       dropX += autoDir * AUTO_STEP;
-      // Bounce at edges
       if (dropX >= DROP_X_MAX) { dropX = DROP_X_MAX; autoDir = -1; }
       if (dropX <= DROP_X_MIN) { dropX = DROP_X_MIN; autoDir = 1; }
     }
   }
-  
-  const toRemove=[];
-  for(const [h,mesh] of meshes){
-    const body=bodies.get(mesh.uuid);
-    if(!body) continue;
-    try{
-      const p=body.translation(), r=body.rotation();
-      mesh.position.set(p.x,p.y,p.z);
-      mesh.quaternion.set(r.x,r.y,r.z,r.w);
-      if(gameStarted && p.y < COLLECT_Y) toRemove.push({mesh,body});
-    }catch(e){}
-  }
-  toRemove.sort((a,b)=>a.mesh.position.y-b.mesh.position.y);
-  toRemove.forEach(({mesh,body})=>collectCoin(mesh,body));
-  
-  if(combo>0 && performance.now()-lastCol>3000){
-    combo=0;
-    document.getElementById('combo').style.opacity=0;
-  }
-  
+
   indicator.position.set(dropX, shelfTop + 0.3, SD/2 - 0.3);
-  
   camera.lookAt(0, -0.4, 1.5);
-  renderer.render(scene,camera);
+  renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
 
