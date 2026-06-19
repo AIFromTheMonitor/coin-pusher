@@ -13,7 +13,8 @@ canvas{display:block}
 #score-label{color:rgba(0,221,255,0.4);font-size:9px;letter-spacing:3px}
 #score{color:#00ddff;font-size:36px;font-weight:900;text-shadow:0 0 30px rgba(0,221,255,0.5);line-height:1}
 #combo{position:absolute;top:90px;left:50%;transform:translateX(-50%);font-size:32px;font-weight:900;opacity:0;transition:opacity 0.3s;white-space:nowrap}
-#reset-btn{position:fixed;top:84px;right:20px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:18px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20}
+#reset-btn{pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.04);border:none;color:rgba(255,255,255,0.45);font-size:18px;padding:8px 14px;font-family:inherit;transition:all 0.2s;line-height:1}
+#reset-btn:hover{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.75)}
 #level-info{position:fixed;top:18px;right:70px;font-size:13px;font-weight:700;color:#ff44aa;text-shadow:0 0 20px rgba(255,68,170,0.4);white-space:nowrap;text-align:center;z-index:15;background:rgba(10,10,20,0.7);padding:6px 14px;border-radius:10px;border:1px solid rgba(255,68,170,0.2);pointer-events:all;cursor:pointer}
 #level-popup{display:none;position:fixed;top:72px;right:70px;z-index:30;background:rgba(5,5,15,0.95);border:1px solid #ff44aa;border-radius:10px;padding:10px 14px;font-size:11px;color:#fff;text-align:left;white-space:nowrap;box-shadow:0 0 20px rgba(255,68,170,0.3)}
 #level-popup.show{display:block}
@@ -32,16 +33,14 @@ canvas{display:block}
 .combo-cascade{color:#ff8800;text-shadow:0 0 60px rgba(255,136,0,0.6)}
 .combo-jackpot{color:#ffd700;text-shadow:0 0 80px rgba(255,215,0,0.7);animation:pulse 0.5s infinite alternate}
 @keyframes pulse{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.15)}}
-#mute-btn{position:fixed;top:20px;right:20px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:20px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20}
-#mute-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8)}
-#mute-btn.muted{color:rgba(255,255,255,0.2)}
+#btn-panel{position:fixed;top:18px;right:18px;display:flex;flex-direction:column;border:1px solid rgba(255,255,255,0.1);border-radius:12px;overflow:hidden;z-index:20;background:rgba(0,0,0,0.3);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.btn-icon{pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.04);border:none;color:rgba(255,255,255,0.45);font-size:18px;padding:8px 14px;font-family:inherit;transition:all 0.2s;line-height:1}
+.btn-icon:hover{background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.75)}
+#mute-btn.muted{color:rgba(255,255,255,0.15)}
+#auto-btn.active{color:#00ff88;background:rgba(0,255,136,0.12);text-shadow:0 0 10px rgba(0,255,136,0.4)}
 #giant-btn{display:none;position:fixed;top:96px;left:20px;pointer-events:all;cursor:pointer;background:linear-gradient(135deg,#ff6600,#cc3300);border:1px solid #ffaa00;color:#fff;font-size:10px;font-weight:900;padding:3px 10px;border-radius:10px;font-family:inherit;z-index:25;text-shadow:0 0 6px rgba(255,255,255,0.5);box-shadow:0 0 18px rgba(255,100,0,0.6);animation:giantPulse 0.6s infinite alternate;letter-spacing:0.5px}
 #giant-btn.charged{display:block}
 @keyframes giantPulse{from{box-shadow:0 0 15px rgba(255,100,0,0.4)}to{box-shadow:0 0 40px rgba(255,100,0,0.9)}}
-#reset-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8)}
-#auto-btn{position:fixed;top:52px;right:20px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.35);font-size:18px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20;font-weight:700}
-#auto-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.6)}
-#auto-btn.active{color:#00ff88;border-color:#00ff88;background:rgba(0,255,136,0.12);text-shadow:0 0 12px rgba(0,255,136,0.5);box-shadow:0 0 16px rgba(0,255,136,0.25)}
 #status{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.15);font-size:11px;letter-spacing:2px}
 #wall-indicator{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);font-size:18px;font-weight:900;color:#ff44aa;text-shadow:0 0 30px rgba(255,68,170,0.6);opacity:0;transition:opacity 0.3s;white-space:nowrap}
 #wall-indicator.active{opacity:1;animation:wallPulse 1s infinite alternate}
@@ -60,9 +59,11 @@ canvas{display:block}
   <div id="combo"></div>
   <div id="status">▼ Drop coins ▼</div>
   <div id="wall-indicator">🧱 WALL 15s</div>
-  <button id="mute-btn" title="Mute">🔊</button>
-  <button id="auto-btn" title="Auto-drop">⚡</button>
-  <button id="reset-btn" title="Restart">🔄</button>
+  <div id="btn-panel">
+    <button id="mute-btn" class="btn-icon" title="Mute">🔊</button>
+    <button id="auto-btn" class="btn-icon" title="Auto-drop">⚡</button>
+    <button id="reset-btn" class="btn-icon" title="Restart">🔄</button>
+  </div>
 </div>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
