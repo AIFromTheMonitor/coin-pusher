@@ -10,16 +10,22 @@ body{overflow:hidden;background:#1a1a2e;font-family:'Segoe UI',system-ui,sans-se
 canvas{display:block}
 #ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
 #score-area{position:fixed;top:48px;left:20px;text-align:left;z-index:12}
-#score-label{color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:3px}
-#score{color:#ffd700;font-size:36px;font-weight:900;text-shadow:0 0 30px rgba(255,215,0,0.4);line-height:1}
+#score-label{color:rgba(0,221,255,0.4);font-size:9px;letter-spacing:3px}
+#score{color:#00ddff;font-size:36px;font-weight:900;text-shadow:0 0 30px rgba(0,221,255,0.5);line-height:1}
 #combo{position:absolute;top:90px;left:50%;transform:translateX(-50%);font-size:32px;font-weight:900;opacity:0;transition:opacity 0.3s;white-space:nowrap}
 #reset-btn{position:fixed;top:52px;right:20px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:18px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20}
-#level-info{position:fixed;top:18px;right:70px;font-size:13px;font-weight:700;color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,0.3);white-space:nowrap;text-align:center;z-index:15;background:rgba(10,10,20,0.7);padding:6px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.08)}
+#level-info{position:fixed;top:18px;right:70px;font-size:13px;font-weight:700;color:#ff44aa;text-shadow:0 0 20px rgba(255,68,170,0.4);white-space:nowrap;text-align:center;z-index:15;background:rgba(10,10,20,0.7);padding:6px 14px;border-radius:10px;border:1px solid rgba(255,68,170,0.2);pointer-events:all;cursor:pointer}
+#level-popup{display:none;position:fixed;top:72px;right:70px;z-index:30;background:rgba(5,5,15,0.95);border:1px solid #ff44aa;border-radius:10px;padding:10px 14px;font-size:11px;color:#fff;text-align:left;white-space:nowrap;box-shadow:0 0 20px rgba(255,68,170,0.3)}
+#level-popup.show{display:block}
+#level-popup .req{display:flex;align-items:center;gap:6px;margin:3px 0}
+#level-popup .req.done{color:#00ff88}
+#level-popup .req .bar{width:80px;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden}
+#level-popup .req .fill{height:100%;border-radius:3px}
 .level-bar-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
 .level-icon{font-size:14px}
 .level-bar{width:60px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden}
 .level-fill{height:100%;border-radius:3px;transition:width 0.3s}
-.level-fill.coin{background:linear-gradient(90deg,#ffd700,#ffaa00)}
+.level-fill.coin{background:linear-gradient(90deg,#00ddff,#00aacc)}
 .level-fill.diamond{background:linear-gradient(90deg,#44aaff,#88ccff)}
 .level-fill.gem{background:linear-gradient(90deg,#ff44aa,#ff88cc)}
 .combo-fire{color:#ff4400;text-shadow:0 0 40px rgba(255,68,0,0.5)}
@@ -34,9 +40,9 @@ canvas{display:block}
 @keyframes giantPulse{from{box-shadow:0 0 15px rgba(255,100,0,0.4)}to{box-shadow:0 0 40px rgba(255,100,0,0.9)}}
 #reset-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8)}
 #status{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.15);font-size:11px;letter-spacing:2px}
-#wall-indicator{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);font-size:18px;font-weight:900;color:#4488ff;text-shadow:0 0 30px rgba(68,136,255,0.6);opacity:0;transition:opacity 0.3s;white-space:nowrap}
+#wall-indicator{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);font-size:18px;font-weight:900;color:#ff44aa;text-shadow:0 0 30px rgba(255,68,170,0.6);opacity:0;transition:opacity 0.3s;white-space:nowrap}
 #wall-indicator.active{opacity:1;animation:wallPulse 1s infinite alternate}
-@keyframes wallPulse{from{text-shadow:0 0 20px rgba(68,136,255,0.5)}to{text-shadow:0 0 50px rgba(68,136,255,0.9)}}
+@keyframes wallPulse{from{text-shadow:0 0 20px rgba(255,68,170,0.5)}to{text-shadow:0 0 60px rgba(255,68,170,0.9)}}
 .back-btn{position:fixed;top:12px;left:12px;z-index:9999;background:rgba(0,0,0,0.5);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);transition:opacity 0.2s}
 .back-btn:hover{opacity:0.8}
 .back-btn:active{opacity:0.6}
@@ -47,6 +53,7 @@ canvas{display:block}
 <div id="ui">
   <div id="score-area"><div id="score-label">TOKENS</div><div id="score">100</div><button id="giant-btn">💥 GIANT COIN</button></div>
   <div id="level-info">Lv1 · 🪙0/30</div>
+  <div id="level-popup"></div>
   <div id="combo"></div>
   <div id="status">▼ Drop coins ▼</div>
   <div id="wall-indicator">🧱 WALL 15s</div>
@@ -63,7 +70,7 @@ await RAPIER.init();
 
 // ─── SCENE ──────────────────────────────────
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x2a2a3e);
+scene.background = new THREE.Color(0x0a0a1a);
 const camera = new THREE.PerspectiveCamera(35, innerWidth/innerHeight, 0.1, 40);
 camera.position.set(0, 4, 9);
 camera.lookAt(0, -0.4, 1.5);
@@ -73,12 +80,12 @@ renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.6;
+renderer.toneMappingExposure = 2.0;
 document.body.prepend(renderer.domElement);
 
 // Lights
-scene.add(new THREE.AmbientLight(0xaabbcc, 2.0));
-const sun = new THREE.DirectionalLight(0xffffff, 3.5);
+scene.add(new THREE.AmbientLight(0x6644aa, 1.8));
+const sun = new THREE.DirectionalLight(0xcc88ff, 3.0);
 sun.position.set(5, 12, 4); sun.castShadow = true;
 sun.shadow.mapSize.set(2048,2048);
 sun.shadow.camera.left=-10;sun.shadow.camera.right=10;
@@ -86,23 +93,23 @@ sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;
 sun.shadow.camera.near=0.5;sun.shadow.camera.far=30;
 sun.shadow.bias=-0.0003;
 scene.add(sun);
-const fill = new THREE.DirectionalLight(0xffffff, 1.0);
+const fill = new THREE.DirectionalLight(0x44ccff, 1.5);
 fill.position.set(0, 3, 8); scene.add(fill);
 
 // ─── MATERIALS ──────────────────────────────
-const feltMat = new THREE.MeshStandardMaterial({color:0x2a5a3a, roughness:0.95});
-const metalMat = new THREE.MeshStandardMaterial({color:0xdaa520, roughness:0.2, metalness:0.9});
-const cabMat = new THREE.MeshStandardMaterial({color:0x1a1a2e, roughness:0.6});
-const glassMat = new THREE.MeshPhysicalMaterial({color:0x88bbff, roughness:0, metalness:0, transparent:true, opacity:0.06, side:THREE.DoubleSide});
-const platMat = new THREE.MeshStandardMaterial({color:0xffd700, roughness:0.1, metalness:0.95, emissive:0x664400, emissiveIntensity:0.7});
-const neonRed = new THREE.MeshStandardMaterial({color:0xff2200, emissive:0xff2200, emissiveIntensity:0.8, transparent:true, opacity:0.5});
-const neonBlue = new THREE.MeshStandardMaterial({color:0x4444ff, emissive:0x4444ff, emissiveIntensity:0.8, transparent:true, opacity:0.5});
-const goldCoin = new THREE.MeshPhysicalMaterial({color:0xffd700, metalness:0.9, roughness:0.08, clearcoat:0.1, envMapIntensity:2.0});
-const silverCoin = new THREE.MeshPhysicalMaterial({color:0xc0c0d0, metalness:0.85, roughness:0.1, clearcoat:0.08, envMapIntensity:1.8});
+const feltMat = new THREE.MeshStandardMaterial({color:0x1a0a2e, roughness:0.9});
+const metalMat = new THREE.MeshStandardMaterial({color:0x00ccff, roughness:0.15, metalness:0.95, emissive:0x004466, emissiveIntensity:0.6});
+const cabMat = new THREE.MeshStandardMaterial({color:0x0a0a1e, roughness:0.5});
+const glassMat = new THREE.MeshPhysicalMaterial({color:0xff44aa, roughness:0, metalness:0, transparent:true, opacity:0.1, side:THREE.DoubleSide});
+const platMat = new THREE.MeshStandardMaterial({color:0x1a0a2e, roughness:0.3, metalness:0.4, emissive:0x0a0520, emissiveIntensity:0.3});
+const neonPink = new THREE.MeshStandardMaterial({color:0xff44aa, emissive:0xff44aa, emissiveIntensity:1.0, transparent:true, opacity:0.6});
+const neonCyan = new THREE.MeshStandardMaterial({color:0x00ddff, emissive:0x00ddff, emissiveIntensity:1.0, transparent:true, opacity:0.6});
+const coinPink = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0.5, roughness:0.06, emissive:0xff2288, emissiveIntensity:0.7, clearcoat:0.2, envMapIntensity:2.5});
+const coinCyan = new THREE.MeshPhysicalMaterial({color:0x00ddff, metalness:0.5, roughness:0.06, emissive:0x0099cc, emissiveIntensity:0.7, clearcoat:0.2, envMapIntensity:2.5});
 
 // Diamond & Gem collectibles
-const diaMat = new THREE.MeshPhysicalMaterial({color:0x44aaff, metalness:0.3, roughness:0.08, emissive:0x2266cc, emissiveIntensity:0.5, clearcoat:0.3});
-const gemMat = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0.2, roughness:0.06, emissive:0xcc2288, emissiveIntensity:0.5, clearcoat:0.3});
+const diaMat = new THREE.MeshPhysicalMaterial({color:0x44aaff, metalness:0.3, roughness:0.06, emissive:0x2266cc, emissiveIntensity:0.8, clearcoat:0.3});
+const gemMat = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0.3, roughness:0.04, emissive:0xcc2288, emissiveIntensity:0.8, clearcoat:0.3});
 
 // ─── DIMENSIONS ─────────────────────────────
 const SW = 10, SD = 8, SH = 0.12;
@@ -128,13 +135,22 @@ shelf.position.set(0, shelfY, 0);
 shelf.receiveShadow = true;
 scene.add(shelf);
 
+// Side neon panels
+function addSidePanel(x){
+  const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.7, SD+0.6), neonPink);
+  p.position.set(x, shelfY+0.35, 0);
+  scene.add(p);
+}
+addSidePanel(-SW/2 - 0.15);
+addSidePanel(SW/2 + 0.15);
+
 // Trim
 function addTrim(x,y,z,w,h,d,mat=metalMat){
   const t = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
   t.position.set(x,y,z); t.castShadow=true; scene.add(t);
 }
-addTrim(-SW/2-0.04, shelfY+SH/2, 0, 0.06, SH+0.02, SD+0.06);
-addTrim(SW/2+0.04, shelfY+SH/2, 0, 0.06, SH+0.02, SD+0.06);
+addTrim(-SW/2-0.04, shelfY+SH/2, 0, 0.06, SH+0.02, SD+0.06, neonPink);
+addTrim(SW/2+0.04, shelfY+SH/2, 0, 0.06, SH+0.02, SD+0.06, neonPink);
 
 // ─── MOVING PLATFORM ────────────────────────
 const platGroup = new THREE.Group();
@@ -148,7 +164,7 @@ platGroup.add(platBody);
 // Platform front edge highlight
 const platEdge = new THREE.Mesh(
   new THREE.BoxGeometry(PLAT_W - 0.1, 0.015, 0.06),
-  new THREE.MeshStandardMaterial({color:0xffee88, roughness:0.1, metalness:0.8, emissive:0x553300, emissiveIntensity:0.5})
+  new THREE.MeshStandardMaterial({color:0x00ddff, roughness:0.08, metalness:0.9, emissive:0x006688, emissiveIntensity:0.8})
 );
 platEdge.position.set(0, PLAT_H/2 + 0.01, PLAT_D/2 - 0.1);
 platGroup.add(platEdge);
@@ -167,7 +183,7 @@ const faceH = PLAT_Y + PLAT_H/2 - shelfTop + 0.12;
 const faceY = shelfTop + faceH/2 - PLAT_Y;
 const frontFace = new THREE.Mesh(
   new THREE.BoxGeometry(PLAT_W - 0.15, faceH, 0.04),
-  new THREE.MeshStandardMaterial({color:0xffee88, roughness:0.1, metalness:0.8})
+  new THREE.MeshStandardMaterial({color:0x00ddff, roughness:0.08, metalness:0.9})
 );
 frontFace.position.set(0, faceY, PLAT_D/2);
 frontFace.castShadow = true;
@@ -175,10 +191,127 @@ platGroup.add(frontFace);
 
 // ─── FIXED BACK WALL ────────────────────────
 const backWall = new THREE.Mesh(
-  new THREE.BoxGeometry(PLAT_W + 0.15, BACK_H, 0.1), platMat);
+  new THREE.BoxGeometry(PLAT_W + 0.15, BACK_H, 0.1), feltMat);
 backWall.position.set(0, PLAT_TOP + BACK_H/2, BACK_Z);
 backWall.castShadow = true;
 scene.add(backWall);
+
+// ─── 3D TITLE ───────────────────────────────
+const titleCanvas = document.createElement('canvas');
+titleCanvas.width = 2048; titleCanvas.height = 384;
+const tctx = titleCanvas.getContext('2d');
+tctx.fillStyle = '#ff44aa';
+tctx.font = 'bold 200px "Segoe UI", system-ui, sans-serif';
+tctx.textAlign = 'center'; tctx.textBaseline = 'middle';
+tctx.shadowColor = '#ff0088'; tctx.shadowBlur = 60;
+tctx.fillText('COIN PUSHER', 1024, 192);
+tctx.shadowBlur = 0;
+tctx.fillText('COIN PUSHER', 1024, 192);
+const titleTex = new THREE.CanvasTexture(titleCanvas);
+titleTex.minFilter = THREE.LinearFilter;
+const titleMat = new THREE.MeshBasicMaterial({map: titleTex, transparent: true, side: THREE.DoubleSide, depthTest: false});
+const titleSign = new THREE.Mesh(new THREE.PlaneGeometry(12, 2.25), titleMat);
+titleSign.position.set(0, PLAT_TOP + BACK_H + 0.8, BACK_Z);
+titleSign.renderOrder = 999;
+scene.add(titleSign);
+
+// ─── SPARKLE EFFECTS ──────────────────────
+// Canvas glow texture for sparkle particles
+function createSparkTexture(innerColor, size = 128) {
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+  g.addColorStop(0, innerColor);
+  g.addColorStop(0.08, innerColor);
+  g.addColorStop(0.4, innerColor + '44');
+  g.addColorStop(1, 'transparent');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  return tex;
+}
+const sparkTexWhite = createSparkTexture('#ffffff');
+const sparkTexPink = createSparkTexture('#ff66cc');
+const sparkTexCyan = createSparkTexture('#66eeff');
+
+function makeSparkSystem(count, cx, cy, cz, spreadW, spreadH, spreadD, tex, color, size, rOrder) {
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+  const data = []; // {tx,ty,tz,phase,speed,threshold}
+  for (let i = 0; i < count; i++) {
+    const tx = cx + (Math.random() - 0.5) * spreadW;
+    const ty = cy + (Math.random() - 0.5) * spreadH;
+    const tz = cz + (Math.random() - 0.5) * spreadD;
+    pos[i*3] = tx;
+    pos[i*3+1] = ty;
+    pos[i*3+2] = tz;
+    data.push({ tx, ty, tz, phase: Math.random() * Math.PI * 2, speed: 0.03 + Math.random() * 0.09, threshold: 0.25 + Math.random() * 0.65, driftY: (Math.random() - 0.5) * 0.3 });
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({
+    map: tex, color, size, blending: THREE.AdditiveBlending,
+    depthTest: false, depthWrite: false, transparent: true,
+  });
+  const pts = new THREE.Points(geo, mat);
+  pts.renderOrder = rOrder;
+  scene.add(pts);
+  return { pts, data, posArr: pos };
+}
+
+// Title sparkles — around the COIN PUSHER sign
+const titleSpark = makeSparkSystem(
+  120, 0, PLAT_TOP + BACK_H + 0.8, BACK_Z,  // center
+  13, 2.8, 0.6,                              // spread W,H,D
+  sparkTexPink, 0xff44aa, 0.55, 998
+);
+
+// Left wall sparkles — along the left side panels/trim
+const wallSparkL = makeSparkSystem(
+  80, -SW/2 - 0.15, shelfY + 0.15, 0,       // center
+  0.2, 1.2, SD + 0.8,                        // spread W,H,D
+  sparkTexCyan, 0x44ddff, 0.35, 997
+);
+
+// Right wall sparkles — along the right side panels/trim
+const wallSparkR = makeSparkSystem(
+  80, SW/2 + 0.15, shelfY + 0.15, 0,
+  0.2, 1.2, SD + 0.8,
+  sparkTexPink, 0xff44aa, 0.35, 997
+);
+
+// Back wall sparkles — along the back neon strip
+const backSpark = makeSparkSystem(
+  70, 0, shelfY + 0.6, -SD/2 - 0.2,
+  SW + 1.6, 0.3, 0.1,
+  sparkTexCyan, 0x44ddff, 0.30, 997
+);
+
+// Front sparkles — along the front pink neon strip
+const frontSpark = makeSparkSystem(
+  60, 0, shelfY - 0.1, SD/2 + 0.55,
+  SW + 1.2, 0.2, 0.1,
+  sparkTexPink, 0xff44aa, 0.30, 997
+);
+
+// Sparkle animation helper
+function animateSparkles(sys, time, showFrac = 0.25) {
+  const { data, posArr } = sys;
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i];
+    const b = Math.sin(time * d.speed + d.phase);
+    if (b > d.threshold) {
+      const s = (b - d.threshold) / (1 - d.threshold); // 0..1 brightness
+      posArr[i*3] = d.tx + Math.sin(time * 1.7 + d.phase) * 0.15;
+      posArr[i*3+1] = d.ty + Math.sin(time * 2.1 + d.phase) * d.driftY;
+      posArr[i*3+2] = d.tz;
+    } else {
+      posArr[i*3+1] = -999; // hide below scene
+    }
+  }
+  sys.pts.geometry.attributes.position.needsUpdate = true;
+}
 
 // ─── CABINET ────────────────────────────────
 const cabBody = new THREE.Mesh(new THREE.BoxGeometry(SW+1.8, 0.15, SD+1.2), cabMat);
@@ -197,17 +330,17 @@ function addNeon(x,y,z,w,h,d,mat){
   const n = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
   n.position.set(x,y,z); scene.add(n);
 }
-addNeon(0, shelfY+0.62, -SD/2-0.1, SW+1.6, 0.015, 0.04, neonBlue);
-addNeon(0, shelfY+0.62, SD/2+0.5, SW+1.6, 0.015, 0.04, neonBlue);
-addNeon(-SW/2-0.6, shelfY+0.1, 0, 0.015, 0.5, SD+0.8, neonBlue);
-addNeon(SW/2+0.6, shelfY+0.1, 0, 0.015, 0.5, SD+0.8, neonBlue);
-addNeon(0, shelfY-0.15, SD/2+0.5, SW+1.2, 0.015, 0.04, neonRed);
+addNeon(0, shelfY+0.62, -SD/2-0.1, SW+1.6, 0.015, 0.04, neonCyan);
+addNeon(0, shelfY+0.62, SD/2+0.5, SW+1.6, 0.015, 0.04, neonCyan);
+addNeon(-SW/2-0.6, shelfY+0.1, 0, 0.015, 0.5, SD+0.8, neonCyan);
+addNeon(SW/2+0.6, shelfY+0.1, 0, 0.015, 0.5, SD+0.8, neonCyan);
+addNeon(0, shelfY-0.15, SD/2+0.5, SW+1.2, 0.015, 0.04, neonPink);
 
 // ─── COIN WALL POWER-UP ────────────────────
 let coinWallActive = false, coinWallTimer = 0;
 const COIN_WALL_DURATION = 15;
 const WALL_H = 0.7, WALL_Y_HIDDEN = shelfY - 0.5, WALL_Y_ACTIVE = shelfTop + WALL_H/2;
-const wallMat = new THREE.MeshStandardMaterial({color:0x4488ff, emissive:0x4488ff, emissiveIntensity:1.2, transparent:true, opacity:0.7});
+const wallMat = new THREE.MeshStandardMaterial({color:0xff44aa, emissive:0xff44aa, emissiveIntensity:1.5, transparent:true, opacity:0.8});
 
 function createWall(sideX){
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, WALL_H, SD/2 + 0.3), wallMat);
@@ -274,21 +407,21 @@ let gameStarted = false;
 setTimeout(() => gameStarted = true, 4000);
 let platZ = PLAT_Z_MIN;
 
-function spawnCoin(x, y, z, type, velZ=0){
+function spawnCoin(x, y, z, type, velX=0, velY=0, velZ=0){
   let geo, mat, colRadius, colHalfH, density;
   if(type === 'diamond'){
     geo = diaGeo; mat = diaMat; colRadius = 0.22; colHalfH = 0.04; density = 2.0;
   } else if(type === 'gem'){
     geo = gemGeo; mat = gemMat; colRadius = 0.20; colHalfH = 0.04; density = 1.5;
   } else {
-    geo = coinGeo; mat = Math.random()<0.7 ? goldCoin : silverCoin; colRadius = CR; colHalfH = CH/2; density = 1.2;
+    geo = coinGeo; mat = Math.random()<0.5 ? coinPink : coinCyan; colRadius = CR; colHalfH = CH/2; density = 1.2;
   }
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true; mesh.receiveShadow = true;
   mesh.position.set(x, y, z);
   scene.add(mesh);
   const body = world.createRigidBody(
-    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(0, 0, velZ).setLinearDamping(0.06).setAngularDamping(0.35)
+    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(velX, velY, velZ).setLinearDamping(0.06).setAngularDamping(0.35)
   );
   // Cylinder collider for all types (no more rolling spheres!)
   world.createCollider(RAPIER.ColliderDesc.cylinder(colHalfH, colRadius).setFriction(0.4).setRestitution(type==='diamond'||type==='gem'?0.04:0.02).setDensity(density), body);
@@ -340,7 +473,7 @@ const DROP_X_MIN = -PLAT_W/2+0.5, DROP_X_MAX = PLAT_W/2-0.5;
 const indGeo = new THREE.BoxGeometry(0.06, 0.4, 0.06);
 const indMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.7});
 const indicator = new THREE.Mesh(indGeo, indMat);
-indicator.position.set(0, PLAT_TOP + 0.4, BACK_Z);
+indicator.position.set(0, shelfTop + 0.3, SD/2 - 0.3);
 scene.add(indicator);
 
 function dropCoin(){
@@ -348,10 +481,10 @@ function dropCoin(){
   tokens--;
   document.getElementById('score').textContent = tokens;
   const x = dropX + (Math.random()-0.5)*0.3;
-  const z = BACK_Z + 0.3 + Math.random() * 0.5;
-  const r = Math.random();
-  spawnCoin(x, PLAT_TOP + 0.7, z, 'coin');
-  playSound(600, 0.05);
+  const z = SD/2 - 0.3;  // Front of machine, above shelf
+  const y = shelfTop + 0.3;  // Above shelf surface
+  spawnCoin(x, y, z, 'coin', 0, 4.0, -7.5);  // High arc to back wall: 0.82s flight, peaks at y≈0.4
+  playSound(400, 0.08);
   indMat.opacity = 1.0;
   setTimeout(() => indMat.opacity = 0.7, 100);
 }
@@ -359,7 +492,7 @@ function dropCoin(){
 // ─── GIANT COIN ─────────────────────────────
 const GCR = CR * 3, GCH = CH * 3;
 const giantCoinGeo = new THREE.CylinderGeometry(GCR, GCR, GCH, 48);
-const giantCoinMat = new THREE.MeshPhysicalMaterial({color:0xffd700, metalness:0.95, roughness:0.05, emissive:0xffaa00, emissiveIntensity:0.6, clearcoat:0.3});
+const giantCoinMat = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0.5, roughness:0.04, emissive:0xff2288, emissiveIntensity:0.9, clearcoat:0.3});
 
 function spawnGiantCoin(){
   const x = dropX + (Math.random()-0.5)*0.5;
@@ -384,7 +517,7 @@ function spawnSpecialDrop(type){
   const x = dropX + (Math.random()-0.5)*0.5;
   const z = BACK_Z + 0.8;  // Above the stacked coins
   const y = PLAT_TOP + 2.0;
-  spawnCoin(x, y, z, type, 2.5);  // Forward nudge so it doesn't just sit there
+  spawnCoin(x, y, z, type, 0, 0, 2.5);  // Forward nudge so it doesn't just sit there
   playSound(type==='gem'?180:140, 0.25);
 }
 
@@ -496,6 +629,23 @@ function updateLevelUI(){
 
 updateLevelUI(); // Init display
 
+// ─── LEVEL POPUP ─────────────────────────────
+function updateLevelPopup(){
+  const lv = levels[currentLevel];
+  const popup = document.getElementById('level-popup');
+  let html = `<div style="font-weight:700;color:#ff44aa;margin-bottom:4px">Lv${currentLevel+1} Requirements</div>`;
+  function row(icon, cur, need, fillClass){
+    const pct = Math.min(100, (cur/need)*100);
+    const done = cur >= need;
+    html += `<div class="req${done?' done':''}">${icon} ${cur}/${need}<div class="bar"><div class="fill ${fillClass}" style="width:${pct}%;background:${done?'#00ff88':fillClass==='diamond'?'#44aaff':fillClass==='gem'?'#ff44aa':'#00ddff'}"></div></div></div>`;
+  }
+  row('🪙', collected.coins, lv.coins, 'coin');
+  if(lv.diamonds>0) row('💎', collected.diamonds, lv.diamonds, 'diamond');
+  if(lv.gems>0) row('🔶', collected.gems, lv.gems, 'gem');
+  popup.innerHTML = html;
+}
+updateLevelPopup();
+
 // ─── COLLECT ───────────────────────────────
 let combo = 0, lastCol = 0, giantCoinCharged = false, diamondSent = false, gemSent = false;
 function getMultiplier(c) {
@@ -519,6 +669,7 @@ function collectCoin(mesh, body){
   // Track collectible progress
   collected[type === 'gem' ? 'gems' : type === 'diamond' ? 'diamonds' : 'coins'] += val;
   checkLevelComplete();
+  updateLevelPopup();
   document.getElementById('score').textContent = tokens;
   playCollect();
   const c=document.getElementById('combo');
@@ -586,6 +737,14 @@ function loop(time){
   updatePlatform(dt);
   updateCoinWall(dt);
   
+  // Animate sparkles
+  const sparkTime = performance.now() * 0.001;
+  animateSparkles(titleSpark, sparkTime);
+  animateSparkles(wallSparkL, sparkTime);
+  animateSparkles(wallSparkR, sparkTime);
+  animateSparkles(backSpark, sparkTime);
+  animateSparkles(frontSpark, sparkTime);
+  
   const toRemove=[];
   for(const [h,mesh] of meshes){
     const body=bodies.get(mesh.uuid);
@@ -605,7 +764,7 @@ function loop(time){
     document.getElementById('combo').style.opacity=0;
   }
   
-  indicator.position.set(dropX, PLAT_TOP + 0.4, BACK_Z);
+  indicator.position.set(dropX, shelfTop + 0.3, SD/2 - 0.3);
   
   camera.lookAt(0, -0.4, 1.5);
   renderer.render(scene,camera);
@@ -652,6 +811,11 @@ document.getElementById('giant-btn').addEventListener('click',()=>{
   giantCoinCharged = false;
   document.getElementById('giant-btn').classList.remove('charged');
   spawnGiantCoin();
+});
+document.getElementById('level-info').addEventListener('click',()=>{
+  const popup = document.getElementById('level-popup');
+  updateLevelPopup();
+  popup.classList.toggle('show');
 });
 renderer.domElement.addEventListener('click',(e)=>{if(e.target===renderer.domElement)dropCoin();});
 renderer.domElement.addEventListener('mousemove',(e)=>{
