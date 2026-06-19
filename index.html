@@ -55,7 +55,7 @@ canvas{display:block}
 #menu-title{font-size:48px;font-weight:900;background:linear-gradient(135deg,#00ddff,#ff44aa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;margin-bottom:4px;text-shadow:none}
 #menu-sub{color:rgba(255,255,255,0.3);font-size:11px;letter-spacing:4px;margin-bottom:28px}
 #menu-name-label{color:rgba(255,255,255,0.5);font-size:11px;letter-spacing:2px;margin-bottom:6px}
-#menu-name{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:10px 16px;width:100%;font-size:18px;color:#fff;text-align:center;font-family:inherit;outline:none;transition:border-color 0.2s;box-sizing:border-box}
+#menu-name{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:10px 16px;width:100%;font-size:18px;color:#fff;text-align:center;font-family:inherit;outline:none;transition:border-color 0.2s;box-sizing:border-box;-webkit-appearance:none;-webkit-search-decoration:none;-webkit-search-cancel-button:hidden}
 #menu-name:focus{border-color:#00ddff;box-shadow:0 0 20px rgba(0,221,255,0.15)}
 #menu-name::placeholder{color:rgba(255,255,255,0.2)}
 #menu-play{width:100%;padding:14px;margin-top:14px;background:linear-gradient(135deg,#00ddff,#0088cc);border:none;border-radius:12px;color:#fff;font-size:20px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform 0.15s,box-shadow 0.2s;box-shadow:0 0 30px rgba(0,221,255,0.2)}
@@ -98,7 +98,7 @@ canvas{display:block}
     <div id="menu-title">COIN PUSHER</div>
     <div id="menu-sub">🪙 ARCADE</div>
     <div id="menu-name-label">ENTER YOUR NAME</div>
-    <input id="menu-name" type="text" placeholder="Player" maxlength="16" autocomplete="off">
+    <form autocomplete="off" style="display:inline;margin:0;padding:0"><input type="text" name="dummy" style="display:none" aria-hidden="true"><input id="menu-name" type="search" placeholder="Player" maxlength="16" autocomplete="off" spellcheck="false" data-form-type="other"></form>
     <button id="menu-play">▶ PLAY</button>
     <button id="menu-scores">🏆 SCORES</button>
     <div id="menu-preview">
@@ -596,8 +596,8 @@ const giantCoinGeo = new THREE.CylinderGeometry(GCR, GCR, GCH, 48);
 const giantCoinMat = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0.5, roughness:0.04, emissive:0xff2288, emissiveIntensity:0.9, clearcoat:0.3});
 
 function spawnGiantCoin(){
-  const x = Math.max(DROP_X_MIN, Math.min(DROP_X_MAX, dropX + (Math.random()-0.5) * 2.0));
-  const z = BACK_Z + 0.3 + Math.random() * 1.8;
+  const x = Math.max(DROP_X_MIN, Math.min(DROP_X_MAX, dropX + (Math.random()-0.5) * 6.0));
+  const z = BACK_Z + 0.3 + Math.random() * 3.5;
   const y = PLAT_TOP + 2.5;
   const vx = (Math.random()-0.5) * 0.8;
   const vz = 1.5 + Math.random() * 1.5;
@@ -674,15 +674,15 @@ function playCollect(){
 // ─── LEVEL SYSTEM ────────────────────────────
 const levels = [
   { coins: 1000, diamonds: 0, gems: 0 },
-  { coins: 25, diamonds: 5, gems: 0 },
-  { coins: 20, diamonds: 10, gems: 0 },
-  { coins: 30, diamonds: 10, gems: 3 },
-  { coins: 20, diamonds: 15, gems: 5 },
-  { coins: 40, diamonds: 15, gems: 8 },
-  { coins: 30, diamonds: 20, gems: 10 },
-  { coins: 50, diamonds: 20, gems: 12 },
-  { coins: 40, diamonds: 25, gems: 15 },
-  { coins: 60, diamonds: 25, gems: 20 },
+  { coins: 1200, diamonds: 5, gems: 0 },
+  { coins: 1400, diamonds: 8, gems: 0 },
+  { coins: 1600, diamonds: 10, gems: 2 },
+  { coins: 2000, diamonds: 12, gems: 3 },
+  { coins: 2500, diamonds: 15, gems: 5 },
+  { coins: 3000, diamonds: 18, gems: 8 },
+  { coins: 4000, diamonds: 20, gems: 10 },
+  { coins: 5000, diamonds: 25, gems: 12 },
+  { coins: 10000, diamonds: 30, gems: 15 },
 ];
 let currentLevel = 0;
 let collected = { coins: 0, diamonds: 0, gems: 0 };
@@ -916,7 +916,7 @@ function saveCurrentRecord(){
   const record = {
     name,
     level: currentLevel + 1,
-    coins: sessionCollected + (100 - tokens), // Count ALL tokens used + collected
+    coins: sessionCollected,
     time: elapsed,
     date: new Date().toISOString().slice(0, 10)
   };
@@ -1030,9 +1030,6 @@ document.getElementById('menu-btn').addEventListener('click', () => {
   saveCurrentRecord();
   location.reload();
 });
-addEventListener('beforeunload', () => {
-  saveCurrentRecord();
-});
 
 loop(performance.now());
 document.getElementById('mute-btn').addEventListener('click',()=>{
@@ -1071,6 +1068,8 @@ renderer.domElement.addEventListener('mousemove',(e)=>{
   dropX=Math.max(DROP_X_MIN,Math.min(DROP_X_MAX,mx*(DROP_X_MAX-DROP_X_MIN)/2));
 });
 addEventListener('keydown',(e)=>{
+  const tag=document.activeElement?.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
   if(e.code==='Space'||e.code==='Enter'){e.preventDefault();dropCoin();}
   if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();dropX=Math.max(DROP_X_MIN,dropX-0.3);}
   if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();dropX=Math.min(DROP_X_MAX,dropX+0.3);}
