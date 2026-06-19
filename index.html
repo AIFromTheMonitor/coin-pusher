@@ -9,7 +9,7 @@
 body{overflow:hidden;background:#1a1a2e;font-family:'Segoe UI',system-ui,sans-serif;user-select:none}
 canvas{display:block}
 #ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
-#score-area{position:fixed;top:48px;left:20px;text-align:left;z-index:12}
+#score-area{position:fixed;top:48px;left:20px;text-align:center;z-index:12}
 #score-label{color:rgba(0,221,255,0.4);font-size:9px;letter-spacing:3px}
 #score{color:#00ddff;font-size:36px;font-weight:900;text-shadow:0 0 30px rgba(0,221,255,0.5);line-height:1}
 #combo{position:absolute;top:90px;left:50%;transform:translateX(-50%);font-size:32px;font-weight:900;opacity:0;transition:opacity 0.3s;white-space:nowrap}
@@ -41,6 +41,7 @@ canvas{display:block}
 #giant-btn{display:none;position:fixed;top:96px;left:20px;pointer-events:all;cursor:pointer;background:linear-gradient(135deg,#ff6600,#cc3300);border:1px solid #ffaa00;color:#fff;font-size:10px;font-weight:900;padding:3px 10px;border-radius:10px;font-family:inherit;z-index:25;text-shadow:0 0 6px rgba(255,255,255,0.5);box-shadow:0 0 18px rgba(255,100,0,0.6);animation:giantPulse 0.6s infinite alternate;letter-spacing:0.5px}
 #giant-btn.charged{display:block}
 @keyframes giantPulse{from{box-shadow:0 0 15px rgba(255,100,0,0.4)}to{box-shadow:0 0 40px rgba(255,100,0,0.9)}}
+#session-time{position:absolute;top:8px;left:0;color:rgba(0,221,255,0.5);font-size:11px;letter-spacing:2px;font-weight:600;width:100%;text-align:center}
 #status{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.15);font-size:11px;letter-spacing:2px}
 #wall-indicator{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);font-size:18px;font-weight:900;color:#ff44aa;text-shadow:0 0 30px rgba(255,68,170,0.6);opacity:0;transition:opacity 0.3s;white-space:nowrap}
 #wall-indicator.active{opacity:1;animation:wallPulse 1s infinite alternate}
@@ -48,12 +49,6 @@ canvas{display:block}
 .back-btn{position:fixed;top:12px;left:12px;z-index:9999;background:rgba(0,0,0,0.5);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);transition:opacity 0.2s}
 .back-btn:hover{opacity:0.8}
 .back-btn:active{opacity:0.6}
-#stats-panel{position:fixed;bottom:18px;left:18px;z-index:15;background:rgba(10,10,20,0.7);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:8px 16px;display:flex;gap:20px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.stat-item{text-align:center}
-.stat-label{color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:2px;text-transform:uppercase}
-.stat-value{color:#00ddff;font-size:18px;font-weight:900;text-shadow:0 0 15px rgba(0,221,255,0.3);line-height:1.2}
-.stat-value.level{color:#ff44aa;text-shadow:0 0 15px rgba(255,68,170,0.3)}
-.stat-value.collected{color:#00ff88;text-shadow:0 0 15px rgba(0,255,136,0.3)}
 /* ─── MENU OVERLAY ─────────────────────────── */
 #menu-overlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(10,10,30,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 #menu-box{background:rgba(20,20,50,0.9);border:1px solid rgba(0,221,255,0.2);border-radius:24px;padding:40px 48px;text-align:center;max-width:420px;width:90%;box-shadow:0 0 80px rgba(255,68,170,0.1)}
@@ -129,17 +124,12 @@ canvas{display:block}
 </div>
 
 <div id="ui">
-  <div id="score-area"><div id="score-label">TOKENS</div><div id="score">100</div><button id="giant-btn">💥 GIANT COIN</button></div>
+  <div id="score-area"><div id="score-label">TOKENS</div><div id="score">100</div><button id="giant-btn">💥 GIANT COIN</button><div id="session-time">0:00</div></div>
   <div id="level-info">Lv1 · 🪙0/30</div>
   <div id="level-popup"></div>
   <div id="combo"></div>
   <div id="status">▼ Drop coins ▼</div>
   <div id="wall-indicator">🧱 WALL 15s</div>
-  <div id="stats-panel">
-    <div class="stat-item"><div class="stat-label">⏱ TIME</div><div class="stat-value" id="stat-time">0:00</div></div>
-    <div class="stat-item"><div class="stat-label">🏆 LEVEL</div><div class="stat-value level" id="stat-level">1</div></div>
-    <div class="stat-item"><div class="stat-label">🪙 COLLECTED</div><div class="stat-value collected" id="stat-collected">0</div></div>
-  </div>
   <div id="btn-panel">
     <button id="mute-btn" class="btn-icon" title="Mute">🔊</button>
     <button id="auto-btn" class="btn-icon" title="Auto-drop">⚡</button>
@@ -892,15 +882,13 @@ function loop(time) {
   indicator.position.set(dropX, shelfTop + 0.3, SD/2 - 0.3);
   camera.lookAt(0, -0.4, 1.5);
   
-  // Update stats panel (every frame — cheap DOM updates)
+  // Update session time (top-left)
   if (gameStarted && sessionStart > 0) {
-    const elapsed = Math.floor((time - sessionStart) / 1000);
+    const elapsed = Math.floor((performance.now() - sessionStart) / 1000);
     const mins = Math.floor(elapsed / 60);
     const secs = elapsed % 60;
-    document.getElementById('stat-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    document.getElementById('session-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
   }
-  document.getElementById('stat-level').textContent = currentLevel + 1;
-  document.getElementById('stat-collected').textContent = sessionCollected;
   
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
