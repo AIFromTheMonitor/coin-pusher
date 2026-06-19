@@ -596,15 +596,17 @@ const giantCoinGeo = new THREE.CylinderGeometry(GCR, GCR, GCH, 48);
 const giantCoinMat = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0.5, roughness:0.04, emissive:0xff2288, emissiveIntensity:0.9, clearcoat:0.3});
 
 function spawnGiantCoin(){
-  const x = dropX + (Math.random()-0.5)*0.5;
-  const z = BACK_Z + 0.8;
+  const x = Math.max(DROP_X_MIN, Math.min(DROP_X_MAX, dropX + (Math.random()-0.5) * 2.0));
+  const z = BACK_Z + 0.3 + Math.random() * 1.8;
   const y = PLAT_TOP + 2.5;
+  const vx = (Math.random()-0.5) * 0.8;
+  const vz = 1.5 + Math.random() * 1.5;
   const mesh = new THREE.Mesh(giantCoinGeo, giantCoinMat);
   mesh.castShadow = true; mesh.receiveShadow = true;
   mesh.position.set(x, y, z);
   scene.add(mesh);
   const body = world.createRigidBody(
-    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(0, 0, 2.0).setLinearDamping(0.03).setAngularDamping(0.2).setCcdEnabled(true)
+    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(vx, 0, vz).setLinearDamping(0.03).setAngularDamping(0.2).setCcdEnabled(true)
   );
   world.createCollider(RAPIER.ColliderDesc.cylinder(GCH/2, GCR).setFriction(0.4).setRestitution(0.05).setDensity(6.0), body);
   meshes.set(body.handle, mesh);
