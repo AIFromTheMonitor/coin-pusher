@@ -923,7 +923,7 @@ function saveCurrentRecord(){
   const records = JSON.parse(localStorage.getItem('cp_records') || '[]');
   records.push(record);
   records.sort((a, b) => b.coins - a.coins);
-  if (records.length > 100) records.length = 100;
+  if (records.length > 20) records.length = 20;
   localStorage.setItem('cp_records', JSON.stringify(records));
 }
 
@@ -981,7 +981,7 @@ function showLeaderboard(){
     return;
   }
   empty.style.display = 'none';
-  records.slice(0, 50).forEach((r, i) => {
+  records.slice(0, 20).forEach((r, i) => {
     const mins = Math.floor(r.time / 60);
     const secs = r.time % 60;
     const timeStr = `${mins}:${secs.toString().padStart(2, '0')}`;
