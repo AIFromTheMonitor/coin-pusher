@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin Pusher 🪙</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#0a0a14;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;user-select:none}
+canvas{display:block}
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
+#marquee{position:absolute;top:16px;left:50%;transform:translateX(-50%);text-align:center}
+#marquee-label{color:rgba(255,255,255,0.15);font-size:9px;letter-spacing:6px;text-transform:uppercase}
+#marquee-score{color:#ffd700;font-size:62px;font-weight:900;text-shadow:0 0 50px rgba(255,215,0,0.4),0 0 120px rgba(255,215,0,0.15);letter-spacing:2px;line-height:0.9}
+#jackpot-bar-bg{position:absolute;top:100px;left:50%;transform:translateX(-50%);width:200px;height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden}
+#jackpot-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,#ff4400,#ff8800,#ffd700);border-radius:4px;transition:width 0.3s;box-shadow:0 0 12px rgba(255,136,0,0.4)}
+#jackpot-label{position:absolute;top:114px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.2);font-size:8px;letter-spacing:2px;text-transform:uppercase}
+#btns{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);pointer-events:all;display:flex;gap:12px}
+.game-btn{cursor:pointer;font-size:15px;font-weight:800;padding:13px 32px;border-radius:10px;text-transform:uppercase;letter-spacing:2px;transition:transform 0.08s;font-family:inherit;border:2px solid}
+.game-btn:hover{transform:scale(1.04)}
+.game-btn:active{transform:scale(0.96)}
+#drop-btn{background:linear-gradient(180deg,#ffd700,#b8860b);color:#1a1a2e;border-color:rgba(255,215,0,0.5);box-shadow:0 0 35px rgba(255,215,0,0.25),inset 0 1px 0 rgba(255,255,255,0.25)}
+#shake-btn{background:linear-gradient(180deg,#2a2040,#151028);color:#ccbbff;border-color:rgba(150,120,255,0.4);box-shadow:0 0 20px rgba(130,100,255,0.15),inset 0 1px 0 rgba(255,255,255,0.08)}
+#shake-btn.cooldown{opacity:0.4;pointer-events:none}
+#combo{position:absolute;top:130px;left:50%;transform:translateX(-50%);font-size:36px;font-weight:900;opacity:0;transition:opacity 0.25s;white-space:nowrap;text-align:center}
+.combo-fire{color:#ff4400;text-shadow:0 0 60px rgba(255,68,0,0.5)}
+.combo-cascade{color:#ff8800;text-shadow:0 0 80px rgba(255,136,0,0.6)}
+.combo-tower{color:#ff00aa;text-shadow:0 0 90px rgba(255,0,170,0.6)}
+.combo-jackpot{color:#ffd700;text-shadow:0 0 120px rgba(255,215,0,0.7),0 0 200px rgba(255,215,0,0.3);animation:pulse 0.5s ease-in-out infinite alternate}
+@keyframes pulse{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.15)}}
+.score-popup{position:absolute;pointer-events:none;font-weight:900;font-size:30px;text-shadow:0 0 30px rgba(255,215,0,0.5);animation:floatUp 1.3s ease-out forwards;z-index:20}
+.score-popup.special{font-size:38px;animation:floatUpBig 1.8s ease-out forwards}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(0.5)}100%{opacity:0;transform:translateY(-140px) scale(1.9)}}
+@keyframes floatUpBig{0%{opacity:1;transform:translateY(0) scale(0.3)}100%{opacity:0;transform:translateY(-200px) scale(2.5)}}
+#status{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.12);font-size:11px;letter-spacing:2px;text-shadow:0 0 8px rgba(0,0,0,0.9);text-transform:uppercase;transition:opacity 1s}
+.jackpot-flash{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:30;background:radial-gradient(ellipse at center,rgba(255,215,0,0.2),transparent 70%);animation:flashFade 1.5s ease-out forwards}
+@keyframes flashFade{0%{opacity:1}100%{opacity:0}}
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="marquee"><div id="marquee-label">Coins Collected</div><div id="marquee-score">0</div></div>
+  <div id="jackpot-bar-bg"><div id="jackpot-bar-fill"></div></div>
+  <div id="jackpot-label">Jackpot</div>
+  <div id="combo"></div>
+  <div id="status">▼ Drop coins to push the pile ▼</div>
+  <div id="btns">
+    <button id="shake-btn" class="game-btn">⚡ Shake</button>
+    <button id="drop-btn" class="game-btn">▼ Drop Coin</button>
+  </div>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.14.0/rapier.es.js';
+await RAPIER.init();
+
+// ─── CONSTANTS ──────────────────────────────────
+const PW = 10;
+const PH = 0.2;
+const UPPER_SURF = 0;
+const LOWER_SURF = -0.7;
+const PUSH_ZB = -2.0;
+const PUSH_ZF = 0.5;
+const PUSH_W = PW - 0.3;
+const PUSH_H = 0.72;
+const PUSH_D = 0.12;
+const DROP_Z = -1.8;
+const UPPER_EDGE = 0.5;
+const PAYOUT_Z = 2.0;
+const COLLECT_Y = -1.4;
+const CR = 0.38;
+const CH = 0.055;
+const CYCLE = 3.2;
+
+// Special coin types
+const COIN_TYPES = ['normal','normal','normal','normal','normal','normal','bomb','magnet','heavy','multiplier'];
+const JACKPOT_THRESHOLD = 25;
+const SHAKE_COOLDOWN = 4.0;
+const MAGNET_RADIUS = 2.2;
+const MAGNET_FORCE = 0.8;
+const BOMB_RADIUS = 1.8;
+const BOMB_FORCE = 3.5;
+
+// ─── THREE.JS ────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a14);
+const camera = new THREE.PerspectiveCamera(24, innerWidth/innerHeight, 0.1, 50);
+camera.position.set(0, 5.5, 11);
+const camTarget = new THREE.Vector3(0, -0.3, 0.5);
+const origCam = camera.position.clone();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.9;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.prepend(renderer.domElement);
+try{const p=new THREE.PMREMGenerator(renderer);scene.environment=p.fromScene(new RoomEnvironment(),0,0.1,100).texture;}catch(e){}
+
+// Lights
+scene.add(new THREE.AmbientLight(0x8899bb, 0.5));
+const m = new THREE.DirectionalLight(0xffeedd,2.2);m.position.set(3,10,5);m.castShadow=true;
+m.shadow.mapSize.set(2048,2048);m.shadow.camera.near=1;m.shadow.camera.far=25;
+m.shadow.camera.left=-10;m.shadow.camera.right=10;m.shadow.camera.top=10;m.shadow.camera.bottom=-10;
+m.shadow.bias=-0.001;scene.add(m);
+const backLight = new THREE.DirectionalLight(0x7722ff,0.15);
+backLight.position.set(-6,5,-4); scene.add(backLight);
+const spot = new THREE.SpotLight(0xffd700, 0.5, 15, Math.PI/5, 0.5, 1.5);
+spot.position.set(0, 6, -3); spot.target.position.set(0, 0, -1); scene.add(spot); scene.add(spot.target);
+
+// ─── MATERIALS ───────────────────────────────
+const goldTrim = new THREE.MeshStandardMaterial({color:0xdaa520,roughness:0.2,metalness:0.9});
+const cabMat = new THREE.MeshStandardMaterial({color:0x0e0e1c,roughness:0.6,metalness:0.2});
+const glass = new THREE.MeshPhysicalMaterial({color:0x88bbff,roughness:0,metalness:0,transparent:true,opacity:0.06,side:THREE.DoubleSide});
+const ledgeMat = new THREE.MeshStandardMaterial({color:0x2a1a0a,roughness:0.5,metalness:0.6});
+const winG = new THREE.MeshStandardMaterial({color:0x00ff88,emissive:0x00ff88,emissiveIntensity:0.25,transparent:true,opacity:0.35});
+const felt = new THREE.MeshStandardMaterial({color:0x050f08,roughness:0.95,metalness:0});
+const feltLower = new THREE.MeshStandardMaterial({color:0x061208,roughness:0.95,metalness:0});
+const pMat = new THREE.MeshPhysicalMaterial({color:0x998877,roughness:0.2,metalness:0.9,clearcoat:0.1,envMapIntensity:3.0});
+const pMatDark = new THREE.MeshPhysicalMaterial({color:0x665544,roughness:0.3,metalness:0.85,envMapIntensity:2.0});
+const goldM = new THREE.MeshPhysicalMaterial({color:0xffd700,metalness:0.85,roughness:0.08,clearcoat:0.15,envMapIntensity:2.5});
+const silverM = new THREE.MeshPhysicalMaterial({color:0xc8c8d0,metalness:0.85,roughness:0.1,clearcoat:0.1,envMapIntensity:2.0});
+
+// Special coin materials
+const bombM = new THREE.MeshPhysicalMaterial({color:0xff2200,metalness:0.6,roughness:0.15,emissive:0xff2200,emissiveIntensity:0.5,clearcoat:0.1,envMapIntensity:2.0});
+const magnetM = new THREE.MeshPhysicalMaterial({color:0x00ccff,metalness:0.7,roughness:0.1,emissive:0x00aadd,emissiveIntensity:0.5,clearcoat:0.15,envMapIntensity:2.5});
+const heavyM = new THREE.MeshPhysicalMaterial({color:0x444455,metalness:0.9,roughness:0.3,clearcoat:0.05,envMapIntensity:1.5});
+const multiM = new THREE.MeshPhysicalMaterial({color:0xcc44ff,metalness:0.6,roughness:0.1,emissive:0xcc44ff,emissiveIntensity:0.5,clearcoat:0.15,envMapIntensity:2.5});
+
+// Neon materials
+const neonRed = new THREE.MeshStandardMaterial({color:0xff2200,emissive:0xff2200,emissiveIntensity:0.8,transparent:true,opacity:0.5});
+const neonBlue = new THREE.MeshStandardMaterial({color:0x4444ff,emissive:0x4444ff,emissiveIntensity:0.8,transparent:true,opacity:0.5});
+const neonGold = new THREE.MeshStandardMaterial({color:0xffd700,emissive:0xffd700,emissiveIntensity:0.6,transparent:true,opacity:0.4});
+
+const cab = new THREE.Group(); scene.add(cab);
+const WH = 0.7; const WT = 0.15;
+
+// ─── CABINET ──────────────────────────────────
+const cabBody = new THREE.Mesh(new THREE.BoxGeometry(PW+1.8,1.45,7.5),cabMat);
+cabBody.position.set(0,-0.55,0.2); cab.add(cabBody);
+const cabTrim = new THREE.Mesh(new THREE.BoxGeometry(PW+1.8,0.06,7.6),goldTrim);
+cabTrim.position.set(0,-0.55+0.72+0.02,0.2); cab.add(cabTrim);
+function addWall(x,y,z,w,h,d,m){const ww=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);ww.position.set(x,y,z);ww.castShadow=true;cab.add(ww);}
+
+// Back wall
+addWall(0, WH/2, -3.8-WT/2, PW+WT*2, WH, WT, cabMat);
+addWall(0, WH-0.04, -3.8-WT/2, PW+WT*2+0.1, 0.03, WT+0.1, goldTrim);
+// Glass sides
+addWall(-PW/2-WT/2, WH/2, -0.5, WT, WH, 3.5, glass);
+addWall(PW/2+WT/2, WH/2, -0.5, WT, WH, 3.5, glass);
+// Front glass
+addWall(0, WH/2, 2.3+WT/2, PW+WT*2, WH, 0.03, glass);
+
+// Neon strips around cabinet
+function addNeon(x,y,z,w,h,d,mat){const n=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);n.position.set(x,y,z);n.name='neon';cab.add(n);}
+// Top edge neon
+addNeon(0, WH+0.02, -2.5, PW+1.6, 0.015, 0.04, neonBlue);
+addNeon(0, WH+0.02, 1.0, PW+1.6, 0.015, 0.04, neonBlue);
+// Side neon
+addNeon(-PW/2-WT-0.01, WH/2, -2.5, 0.015, WH, 0.04, neonBlue);
+addNeon(PW/2+WT+0.01, WH/2, -2.5, 0.015, WH, 0.04, neonBlue);
+// Front bottom neon
+addNeon(0, -0.62, PAYOUT_Z+0.5, PW+1.2, 0.015, 0.04, neonRed);
+
+// ─── SHELVES ─────────────────────────────────
+const upperPlat = new THREE.Mesh(new THREE.BoxGeometry(PW-0.2,PH,4.5),felt);
+upperPlat.position.set(0,-PH/2,UPPER_EDGE-2.25);
+upperPlat.receiveShadow=true; cab.add(upperPlat);
+const upperTrim = new THREE.Mesh(new THREE.BoxGeometry(PW-0.1,0.02,4.5),goldTrim);
+upperTrim.position.set(0,0.01,UPPER_EDGE-2.25); cab.add(upperTrim);
+
+const lowerPlat = new THREE.Mesh(new THREE.BoxGeometry(PW,PH,2.5),feltLower);
+lowerPlat.position.set(0,LOWER_SURF-PH/2,(PAYOUT_Z+UPPER_EDGE)/2);
+lowerPlat.receiveShadow=true; cab.add(lowerPlat);
+const lowerTrim = new THREE.Mesh(new THREE.BoxGeometry(PW+0.2,0.03,2.5),goldTrim);
+lowerTrim.position.set(0,LOWER_SURF+0.015,(PAYOUT_Z+UPPER_EDGE)/2); cab.add(lowerTrim);
+
+// Step-down lip
+addWall(0, LOWER_SURF+0.12, UPPER_EDGE, PW-0.2, 0.24, 0.08, ledgeMat);
+addWall(0, LOWER_SURF+0.18, UPPER_EDGE+0.04, PW-0.3, 0.04, 0.06, goldTrim);
+
+// Payout edge
+addWall(0, LOWER_SURF+0.08, PAYOUT_Z, PW+0.15, 0.16, 0.12, ledgeMat);
+addWall(0, LOWER_SURF+0.12, PAYOUT_Z+0.02, PW+0.1, 0.03, 0.08, goldTrim);
+
+// Win glow
+addWall(0, LOWER_SURF+0.01, PAYOUT_Z+0.12, PW-1, 0.02, 0.12, winG);
+
+// Collection tray
+const tray = new THREE.Mesh(new THREE.BoxGeometry(PW+0.3,0.1,1.5),cabMat);
+tray.position.set(0,-0.35,PAYOUT_Z+1.0); tray.receiveShadow=true; cab.add(tray);
+
+// Drop slot visual
+const slotG = new THREE.MeshStandardMaterial({color:0x6622cc,emissive:0x6622cc,emissiveIntensity:0.15,transparent:true,opacity:0.4});
+addWall(0, 0.01, DROP_Z, 1.0, 0.02, 0.3, slotG);
+
+// ─── PUSHER WALL ─────────────────────────────
+const pusher = new THREE.Group();
+pusher.position.set(0, 0, PUSH_ZB);
+scene.add(pusher);
+
+const mainBody = new THREE.Mesh(new THREE.BoxGeometry(PUSH_W, PUSH_H, PUSH_D), pMat);
+mainBody.position.set(0, -PUSH_H/2+0.02, 0);
+mainBody.castShadow=true; pusher.add(mainBody);
+
+const goldFront = new THREE.Mesh(new THREE.BoxGeometry(PUSH_W-0.1, PUSH_H-0.06, 0.02), goldTrim);
+goldFront.position.set(0, -PUSH_H/2+0.02, PUSH_D/2+0.01); pusher.add(goldFront);
+const goldTopEdge = new THREE.Mesh(new THREE.BoxGeometry(PUSH_W-0.1, 0.03, PUSH_D+0.02), goldTrim);
+goldTopEdge.position.set(0, 0.03, 0); pusher.add(goldTopEdge);
+const shadowLine = new THREE.Mesh(new THREE.BoxGeometry(PUSH_W-0.2, 0.01, PUSH_D+0.04), new THREE.MeshStandardMaterial({color:0x000000,roughness:1}));
+shadowLine.position.set(0, -PUSH_H+0.01, 0); pusher.add(shadowLine);
+const leftRail = new THREE.Mesh(new THREE.BoxGeometry(0.06, PUSH_H-0.04, PUSH_D+0.06), goldTrim);
+leftRail.position.set(-PUSH_W/2+0.04, -PUSH_H/2+0.02, 0); pusher.add(leftRail);
+const rightRail = new THREE.Mesh(new THREE.BoxGeometry(0.06, PUSH_H-0.04, PUSH_D+0.06), goldTrim);
+rightRail.position.set(PUSH_W/2-0.04, -PUSH_H/2+0.02, 0); pusher.add(rightRail);
+
+// ─── PHYSICS ──────────────────────────────────
+const world = new RAPIER.World({x:0,y:-9.81,z:0});
+const contactQueue = new RAPIER.EventQueue(true);
+
+function sb(x,y,z,hw,hh,hd,f=0.5,r=0){
+  const b=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x,y,z));
+  world.createCollider(RAPIER.ColliderDesc.cuboid(hw,hh,hd).setFriction(f).setRestitution(r),b);
+  return b;
+}
+
+// Shelves
+sb(0, -PH/2, UPPER_EDGE-2.25, PW/2-0.1, PH/2, 2.25, 0.5, 0.02);
+sb(0, LOWER_SURF-PH/2, (PAYOUT_Z+UPPER_EDGE)/2, PW/2, PH/2, 1.25, 0.7, 0.02);
+// Back wall
+sb(0, WH/2, -3.8-WT/2, PW/2+WT/2, WH/2, WT/2, 0.4);
+// Payout wall
+sb(0, LOWER_SURF+0.08, PAYOUT_Z, PW/2+0.08, 0.08, 0.06, 0.5, 0.03);
+// Side walls
+sb(-PW/2-0.01, 0.15, -0.5, 0.01, 0.35, 2.0, 0.3);
+sb(PW/2+0.01, 0.15, -0.5, 0.01, 0.35, 2.0, 0.3);
+
+// ─── PUSHER KINEMATIC BODY ──────────────────
+const pushBody = world.createRigidBody(
+  RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, -PUSH_H/2+0.02, PUSH_ZB)
+);
+world.createCollider(
+  RAPIER.ColliderDesc.cuboid(PUSH_W/2, PUSH_H/2-0.02, PUSH_D/2)
+    .setFriction(0.2).setRestitution(0.005),
+  pushBody
+);
+
+// ─── PARTICLES ─────────────────────────────────
+const particles = [];
+const particleGeo = new THREE.SphereGeometry(0.03, 4, 4);
+
+function spawnParticles(pos, color, count=8, spread=0.3, life=0.6){
+  for(let i=0;i<count;i++){
+    const mat = new THREE.MeshBasicMaterial({color,transparent:true,opacity:1});
+    const dot = new THREE.Mesh(particleGeo, mat);
+    dot.position.copy(pos);
+    dot.position.x += (Math.random()-0.5)*spread;
+    dot.position.y += (Math.random()-0.5)*spread*0.5;
+    dot.position.z += (Math.random()-0.5)*spread;
+    scene.add(dot);
+    particles.push({
+      mesh:dot,
+      vel:new THREE.Vector3((Math.random()-0.5)*1.5, Math.random()*2+1, (Math.random()-0.5)*1.5),
+      life, maxLife:life
+    });
+  }
+}
+
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i];
+    p.life -= dt;
+    if(p.life <= 0){
+      scene.remove(p.mesh); p.mesh.material.dispose();
+      // Don't dispose geometry — it's shared particleGeo
+      particles.splice(i,1); continue;
+    }
+    p.mesh.position.x += p.vel.x * dt;
+    p.mesh.position.y += p.vel.y * dt;
+    p.mesh.position.z += p.vel.z * dt;
+    p.vel.y -= 2 * dt;
+    p.mesh.material.opacity = p.life / p.maxLife;
+  }
+}
+
+// ─── PUSHER ANIMATION ────────────────────────
+let pushTm = 0, wasExtending = true;
+
+function updatePusher(dt){
+  if(!gameStarted) return;  // freeze during settling
+  pushTm += dt;
+  const t = (pushTm % CYCLE) / CYCLE;
+  const prevExt = wasExtending;
+  if(t < 0.65) { wasExtending = true; }
+  else { wasExtending = false; }
+  let p = t < 0.65 ? t/0.65 : 1 - (t-0.65)/0.35;
+  p = p*p*(3-2*p);
+  const z = PUSH_ZB + p * (PUSH_ZF - PUSH_ZB);
+  const pos = pushBody.translation();
+  pushBody.setNextKinematicTranslation(new RAPIER.Vector3(pos.x, pos.y, z));
+  pusher.position.z = z;
+  if(!wasExtending && prevExt) releasePendingDrop();
+}
+
+// ─── COINS ────────────────────────────────────
+const coinG = new THREE.CylinderGeometry(CR, CR, CH, 24);
+
+let meshes = new Map(), bodies = new Map(), coinData = new Map();
+let toRemove = [], sid = 0, dropLock = false;
+let score = 0, combo = 0, lastCol = 0, shake = 0;
+let pendingDrops = 0;
+let jackpotFill = 0;
+let shakeCooldown = 0;
+
+function pickCoinType(){
+  return COIN_TYPES[Math.floor(Math.random()*COIN_TYPES.length)];
+}
+
+function getCoinMat(type, isGold){
+  if(type === 'bomb') return bombM;
+  if(type === 'magnet') return magnetM;
+  if(type === 'heavy') return heavyM;
+  if(type === 'multiplier') return multiM;
+  return isGold ? goldM : silverM;
+}
+
+function getCoinMass(type){
+  if(type === 'heavy') return 9.0;
+  return 3.0;
+}
+
+function dropCoin(forcedType=null){
+  if(dropLock) return;
+  dropLock = true; setTimeout(() => dropLock = false, 100);
+  pendingDrops++;
+  document.getElementById('status').textContent = `⏳ ${pendingDrops} queued...`;
+}
+
+function releasePendingDrop(){
+  if(pendingDrops <= 0) return;
+  pendingDrops--;
+  if(pendingDrops === 0) document.getElementById('status').textContent = '▼ Drop coins to push the pile ▼';
+
+  const type = pickCoinType();
+  const gold = sid % 3 !== 0;
+  const mat = getCoinMat(type, gold);
+  const mesh = new THREE.Mesh(coinG, mat);
+  mesh.castShadow = true; scene.add(mesh);
+
+  const ox = (Math.random() - 0.5) * 0.4;
+  const body = world.createRigidBody(
+    RAPIER.RigidBodyDesc.dynamic()
+      .setTranslation(ox, 1.0, DROP_Z + (Math.random()-0.5)*0.12)
+      .setLinearDamping(0.1).setAngularDamping(0.5)
+  );
+  const mass = getCoinMass(type);
+  world.createCollider(
+    RAPIER.ColliderDesc.cylinder(CH/2, CR)
+      .setFriction(0.6).setRestitution(0.01).setDensity(mass),
+    body
+  );
+  meshes.set(body.handle, mesh);
+  bodies.set(mesh.uuid, body);
+  coinData.set(body.handle, {type, value: type==='multiplier'?3:1, spawned: performance.now()});
+
+  playCoinDropSound();
+}
+
+// Seed coins
+function seedCoins(){
+  const spots = [];
+  for(let z = UPPER_EDGE+0.3; z <= PAYOUT_Z-0.5; z += 0.35){
+    for(let x = -4.0; x <= 4.0; x += 0.32){
+      if(Math.random() > 0.15)
+        spots.push({x: x+(Math.random()-0.5)*0.15, z: z+(Math.random()-0.5)*0.15, layer: 0});
+    }
+  }
+  for(let z = UPPER_EDGE+0.5; z <= PAYOUT_Z-0.7; z += 0.28){
+    for(let x = -3.5; x <= 3.5; x += 0.38){
+      if(Math.random() > 0.35)
+        spots.push({x: x+(Math.random()-0.5)*0.2, z: z+(Math.random()-0.5)*0.2, layer: 1});
+    }
+  }
+  for(let i=spots.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[spots[i],spots[j]]=[spots[j],spots[i]];}
+
+  // Add some special coins to seed pile
+  const specialCount = Math.floor(spots.length * 0.08);
+  const specialIndices = new Set();
+  while(specialIndices.size < specialCount) specialIndices.add(Math.floor(Math.random()*spots.length));
+
+  let idx=0;
+  function batch(){
+    for(let b=0;b<12&&idx<spots.length;b++,idx++){
+      const s=spots[idx];
+      const isSpecial = specialIndices.has(idx);
+      const type = isSpecial ? COIN_TYPES[4+Math.floor(Math.random()*6)] : 'normal';
+      const gold = sid % 3 !== 0;
+      const mat = getCoinMat(type, gold);
+      const mesh=new THREE.Mesh(coinG,mat);
+      mesh.castShadow=true;scene.add(mesh);
+      const mass = getCoinMass(type);
+      const body=world.createRigidBody(
+        RAPIER.RigidBodyDesc.dynamic()
+          .setTranslation(s.x+(Math.random()-0.5)*0.1,
+            LOWER_SURF+0.03+s.layer*CH*0.85,
+            s.z+(Math.random()-0.5)*0.1)
+          .setLinearDamping(0.1).setAngularDamping(0.5)
+      );
+      world.createCollider(RAPIER.ColliderDesc.cylinder(CH/2,CR).setFriction(0.6).setRestitution(0.01).setDensity(mass),body);
+      meshes.set(body.handle,mesh); bodies.set(mesh.uuid,body);
+      coinData.set(body.handle, {type, value: type==='multiplier'?3:1, spawned: performance.now()});
+      sid++;
+    }
+    if(idx<spots.length) setTimeout(batch,15);
+  }
+  setTimeout(batch,200);
+}
+
+// ─── SOUNDS ────────────────────────────────────
+function playCoinDropSound(){
+  try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);const f=800+Math.random()*500;
+    o.frequency.setValueAtTime(f,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(f*0.6,ctx.currentTime+0.04);
+    g.gain.setValueAtTime(0.05,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.06);
+    o.start();o.stop(ctx.currentTime+0.06);}catch(e){}
+}
+
+function playCollectSound(type){
+  try{const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    if(type==='bomb'){
+      [200,150,100,80,60].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);o.type='sawtooth';
+        o.frequency.setValueAtTime(f,ctx.currentTime+i*0.03);
+        g.gain.setValueAtTime(0.06,ctx.currentTime+i*0.03);
+        g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.03+0.12);
+        o.start(ctx.currentTime+i*0.03);o.stop(ctx.currentTime+i*0.03+0.12);});
+    } else if(type==='multiplier'){
+      [660,880,1100,1320,1760].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);o.type='sine';
+        o.frequency.setValueAtTime(f,ctx.currentTime+i*0.04);
+        g.gain.setValueAtTime(0,ctx.currentTime+i*0.04);
+        g.gain.linearRampToValueAtTime(0.05,ctx.currentTime+i*0.04+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.04+0.25);
+        o.start(ctx.currentTime+i*0.04);o.stop(ctx.currentTime+i*0.04+0.25);});
+    } else {
+      [880,1100,1320].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();
+        o.connect(g);g.connect(ctx.destination);o.type='sine';
+        o.frequency.setValueAtTime(f,ctx.currentTime+i*0.05);
+        g.gain.setValueAtTime(0,ctx.currentTime+i*0.05);
+        g.gain.linearRampToValueAtTime(0.04,ctx.currentTime+i*0.05+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.05+0.2);
+        o.start(ctx.currentTime+i*0.05);o.stop(ctx.currentTime+i*0.05+0.2);});
+    }
+  }catch(e){}
+}
+
+// ─── JACKPOT ───────────────────────────────────
+function triggerJackpot(){
+  jackpotFill = 0;
+  document.getElementById('jackpot-bar-fill').style.width = '0%';
+
+  // Flash screen
+  const flash = document.createElement('div');
+  flash.className = 'jackpot-flash';
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 1500);
+
+  // Drop cascade
+  document.getElementById('status').textContent = '🎰 JACKPOT! 🎰';
+  for(let i=0;i<20;i++){
+    setTimeout(() => {
+      pendingDrops++;
+      releasePendingDrop();
+    }, i*50);
+  }
+  setTimeout(() => {
+    document.getElementById('status').textContent = '▼ Drop coins to push the pile ▼';
+  }, 2000);
+}
+
+// ─── SCORE / COLLECT ───────────────────────────
+function collectCoin(mesh, body){
+  const data = coinData.get(body.handle) || {type:'normal',value:1};
+  const type = data.type;
+  const value = data.value;
+
+  // Skip entirely during initial settling — don't remove, don't score
+  if(!gameStarted) return;
+
+  world.removeRigidBody(body); scene.remove(mesh);
+  meshes.delete(body.handle); bodies.delete(mesh.uuid);
+  coinData.delete(body.handle);
+  mesh.geometry.dispose();
+
+  // Special effects
+  if(type === 'bomb'){
+    const pos = mesh.position.clone();
+    spawnParticles(pos, 0xff4400, 20, 0.8, 1.0);
+    // Push nearby coins
+    for(const [h, otherMesh] of meshes){
+      const otherBody = bodies.get(otherMesh.uuid);
+      if(!otherBody) continue;
+      const op = otherBody.translation();
+      const dist = pos.distanceTo(new THREE.Vector3(op.x, op.y, op.z));
+      if(dist < BOMB_RADIUS && dist > 0.01){
+        const dir = new THREE.Vector3(op.x-pos.x, op.y-pos.y+0.3, op.z-pos.z).normalize();
+        const force = BOMB_FORCE * (1 - dist/BOMB_RADIUS);
+        otherBody.applyImpulse(new RAPIER.Vector3(dir.x*force, dir.y*force, dir.z*force), true);
+      }
+    }
+    shake = Math.min(shake + 6, 8);
+    playCollectSound('bomb');
+  } else if(type === 'multiplier'){
+    spawnParticles(mesh.position.clone(), 0xcc44ff, 15, 0.6, 0.9);
+    playCollectSound('multiplier');
+  } else {
+    spawnParticles(mesh.position.clone(), 0xffd700, 5, 0.2, 0.5);
+    playCollectSound('normal');
+  }
+
+  score += value;
+  document.getElementById('marquee-score').textContent = score;
+
+  // Jackpot fill
+  jackpotFill++;
+  const fillPct = Math.min((jackpotFill/JACKPOT_THRESHOLD)*100, 100);
+  document.getElementById('jackpot-bar-fill').style.width = fillPct+'%';
+  if(jackpotFill >= JACKPOT_THRESHOLD) triggerJackpot();
+
+  // Combo
+  const now = performance.now();
+  if(now - lastCol < 2000) combo++;
+  else combo = 1;
+  lastCol = now;
+
+  showCombo();
+
+  // Score popup
+  const v = mesh.position.clone(); v.y += 0.3; v.project(camera);
+  const sx = (v.x*0.5+0.5)*innerWidth, sy = (-v.y*0.5+0.5)*innerHeight;
+  const pop = document.createElement('div');
+  pop.className = 'score-popup' + (type!=='normal'?' special':'');
+  if(type === 'bomb') pop.textContent = '💥';
+  else if(type === 'magnet') pop.textContent = '🧲+1🪙';
+  else if(type === 'multiplier') pop.textContent = `x${value}!✨`;
+  else pop.textContent = '+1🪙';
+  pop.style.left = sx + 'px';
+  pop.style.top = sy + 'px';
+  if(type === 'bomb') pop.style.color = '#ff4400';
+  else if(type === 'multiplier') pop.style.color = '#cc44ff';
+  document.getElementById('ui').appendChild(pop);
+  setTimeout(() => pop.remove(), type!=='normal'?1800:1300);
+}
+
+function showCombo(){
+  const c = document.getElementById('combo');
+  c.className = '';
+  if(combo >= 10){ c.textContent = `🎰 JACKPOT x${combo}!`; c.className = 'combo-jackpot'; }
+  else if(combo >= 6){ c.textContent = `🏗️ TOWER DROP x${combo}!`; c.className = 'combo-tower'; }
+  else if(combo >= 3){ c.textContent = `🌊 CASCADE x${combo}!`; c.className = 'combo-cascade'; }
+  else { c.innerHTML = `🔥 ${combo}x COMBO`; c.className = 'combo-fire'; }
+  c.style.opacity = 1;
+  clearTimeout(c._t);
+  c._t = setTimeout(() => c.style.opacity = 0, 3000);
+  if(combo >= 3) shake = Math.min(shake + combo * 0.04, 5);
+}
+
+// ─── MAGNET EFFECT ─────────────────────────────
+function applyMagnetForces(){
+  for(const [h, mesh] of meshes){
+    const data = coinData.get(h);
+    if(!data || data.type !== 'magnet') continue;
+    const body = bodies.get(mesh.uuid);
+    if(!body) continue;
+    const magPos = body.translation();
+    for(const [oh, otherMesh] of meshes){
+      if(oh === h) continue;
+      const otherBody = bodies.get(otherMesh.uuid);
+      if(!otherBody) continue;
+      const op = otherBody.translation();
+      const dx = magPos.x - op.x, dy = magPos.y - op.y, dz = magPos.z - op.z;
+      const dist = Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if(dist < MAGNET_RADIUS && dist > 0.15){
+        const force = MAGNET_FORCE * (1 - dist/MAGNET_RADIUS) / (dist*0.5);
+        otherBody.applyImpulse(new RAPIER.Vector3(dx*force, dy*force, dz*force), true);
+      }
+    }
+    // Visual pulse
+    const t = performance.now()*0.005;
+    mesh.material.emissiveIntensity = 0.3 + Math.sin(t)*0.3;
+  }
+}
+
+// ─── SHAKE MECHANIC ────────────────────────────
+function doShake(){
+  if(shakeCooldown > 0) return;
+  shakeCooldown = SHAKE_COOLDOWN;
+  const btn = document.getElementById('shake-btn');
+  btn.classList.add('cooldown');
+  btn.textContent = '⚡ ...';
+
+  spawnParticles(new THREE.Vector3(0, -0.3, 1.0), 0x8866ff, 15, 1.5, 0.8);
+  shake = Math.min(shake + 3, 6);
+
+  for(const [h, mesh] of meshes){
+    const body = bodies.get(mesh.uuid);
+    if(!body) continue;
+    const rx = (Math.random()-0.5)*2.5;
+    const ry = Math.random()*1.5;
+    const rz = (Math.random()-0.5)*2.5;
+    body.applyImpulse(new RAPIER.Vector3(rx, ry, rz), true);
+  }
+
+  try{const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    for(let i=0;i<5;i++){const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);o.type='triangle';
+      o.frequency.setValueAtTime(40+Math.random()*60,ctx.currentTime+i*0.02);
+      g.gain.setValueAtTime(0.03,ctx.currentTime+i*0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.02+0.08);
+      o.start(ctx.currentTime+i*0.02);o.stop(ctx.currentTime+i*0.02+0.08);}
+  }catch(e){}
+}
+
+// ─── INPUT ────────────────────────────────────
+document.getElementById('drop-btn').addEventListener('click', dropCoin);
+document.getElementById('shake-btn').addEventListener('click', doShake);
+renderer.domElement.addEventListener('click', (e) => {
+  // Only drop on canvas click if not clicking buttons
+  if(e.target === renderer.domElement) dropCoin();
+});
+addEventListener('keydown', (e) => {
+  if(e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); dropCoin(); }
+  if(e.code === 'KeyS') { e.preventDefault(); doShake(); }
+});
+
+function updateShake(dt){
+  if(shake > 0.1){
+    const i = shake * 0.005;
+    camera.position.x = origCam.x + (Math.random()-0.5)*i;
+    camera.position.y = origCam.y + (Math.random()-0.5)*i;
+    shake *= Math.pow(0.03, dt);
+  } else {
+    camera.position.copy(origCam);
+    shake = 0;
+  }
+}
+
+// ─── RESIZE ────────────────────────────────────
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ─── COLLISION PARTICLES ───────────────────────
+let contactSet = new Set();
+
+function spawnCollisionParticles(){
+  try{
+    contactSet.clear();
+    contactQueue.drainContactForceEvents((colliderH1, colliderH2, maxForce) => {
+      try{
+        // Resolve collider handles to body handles
+        const bodyH1 = world.colliders.get(colliderH1)?.parent()?.handle;
+        const bodyH2 = world.colliders.get(colliderH2)?.parent()?.handle;
+        if(bodyH1 == null || bodyH2 == null) return;
+        if(!meshes.has(bodyH1) || !meshes.has(bodyH2)) return;
+        const key = Math.min(bodyH1,bodyH2) + '-' + Math.max(bodyH1,bodyH2);
+        if(contactSet.has(key)) return;
+        contactSet.add(key);
+        if(Math.random() < 0.15){
+          const pos1 = meshes.get(bodyH1).position;
+          const pos2 = meshes.get(bodyH2).position;
+          const mid = pos1.clone().add(pos2).multiplyScalar(0.5);
+          spawnParticles(mid, 0xffd700, 2, 0.06, 0.3);
+        }
+      }catch(e){}
+    });
+  }catch(e){}
+}
+
+// ─── GAME LOOP ────────────────────────────────
+let lastT = performance.now();
+let gameStarted = false;
+
+// Delay scoring during initial coin settling
+setTimeout(() => { gameStarted = true; }, 5000);
+
+function loop(time){
+  const dt = Math.min((time-lastT)/1000, 0.05);
+  lastT = time;
+
+  world.step(contactQueue);
+  updatePusher(dt);
+  applyMagnetForces();
+  spawnCollisionParticles();
+  updateParticles(dt);
+
+  // Shake cooldown
+  if(shakeCooldown > 0){
+    shakeCooldown -= dt;
+    if(shakeCooldown <= 0){
+      const btn = document.getElementById('shake-btn');
+      btn.classList.remove('cooldown');
+      btn.textContent = '⚡ Shake';
+    } else {
+      document.getElementById('shake-btn').textContent = `⚡ ${shakeCooldown.toFixed(1)}`;
+    }
+  }
+
+  // Coin sync + collect
+  toRemove.length = 0;
+  for(const [h, mesh] of meshes){
+    const body = bodies.get(mesh.uuid);
+    if(!body) continue;
+    try{
+      const p = body.translation(), r = body.rotation();
+      mesh.position.set(p.x, p.y, p.z);
+      mesh.quaternion.set(r.x, r.y, r.z, r.w);
+      if(gameStarted && p.y < COLLECT_Y) toRemove.push({mesh, body});
+    } catch(e){}
+  }
+  toRemove.sort((a,b) => a.mesh.position.y - b.mesh.position.y);
+  toRemove.forEach(({mesh, body}) => collectCoin(mesh, body));
+
+  // Combo decay
+  if(combo > 0 && performance.now() - lastCol > 3000){
+    combo = 0;
+    document.getElementById('combo').style.opacity = 0;
+  }
+
+  // Neon pulse on combo
+  if(combo >= 6){
+    const t = performance.now()*0.008;
+    neonRed.emissiveIntensity = 0.4 + Math.sin(t)*0.5;
+    neonGold.emissiveIntensity = 0.3 + Math.sin(t+1)*0.5;
+  } else {
+    neonRed.emissiveIntensity = 0.8;
+    neonGold.emissiveIntensity = 0.6;
+  }
+
+  updateShake(dt);
+  camera.lookAt(camTarget);
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+
+loop(performance.now());
+setTimeout(seedCoins, 300);
+// Debug: expose state
+window.__cp = { meshes, bodies, coinData, get score(){return score}, get combo(){return combo}, get gameStarted(){return gameStarted} };
+console.log('🪙 Coin Pusher v12 — Special Coins + Particles + Jackpot + Shake');
+</script>
+</body>
+</html>
