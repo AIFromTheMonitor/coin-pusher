@@ -48,6 +48,12 @@ canvas{display:block}
 .back-btn{position:fixed;top:12px;left:12px;z-index:9999;background:rgba(0,0,0,0.5);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);transition:opacity 0.2s}
 .back-btn:hover{opacity:0.8}
 .back-btn:active{opacity:0.6}
+#stats-panel{position:fixed;bottom:18px;left:18px;z-index:15;background:rgba(10,10,20,0.7);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:8px 16px;display:flex;gap:20px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.stat-item{text-align:center}
+.stat-label{color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:2px;text-transform:uppercase}
+.stat-value{color:#00ddff;font-size:18px;font-weight:900;text-shadow:0 0 15px rgba(0,221,255,0.3);line-height:1.2}
+.stat-value.level{color:#ff44aa;text-shadow:0 0 15px rgba(255,68,170,0.3)}
+.stat-value.collected{color:#00ff88;text-shadow:0 0 15px rgba(0,255,136,0.3)}
 </style>
 </head>
 <body>
@@ -59,6 +65,11 @@ canvas{display:block}
   <div id="combo"></div>
   <div id="status">▼ Drop coins ▼</div>
   <div id="wall-indicator">🧱 WALL 15s</div>
+  <div id="stats-panel">
+    <div class="stat-item"><div class="stat-label">⏱ TIME</div><div class="stat-value" id="stat-time">0:00</div></div>
+    <div class="stat-item"><div class="stat-label">🏆 LEVEL</div><div class="stat-value level" id="stat-level">1</div></div>
+    <div class="stat-item"><div class="stat-label">🪙 COLLECTED</div><div class="stat-value collected" id="stat-collected">0</div></div>
+  </div>
   <div id="btn-panel">
     <button id="mute-btn" class="btn-icon" title="Mute">🔊</button>
     <button id="auto-btn" class="btn-icon" title="Auto-drop">⚡</button>
@@ -421,7 +432,8 @@ let pushTm = 0;
 let muted = false;
 let autoMode = false, autoDir = 1, autoLastDrop = 0;
 let gameStarted = false;
-setTimeout(() => gameStarted = true, 4000);
+let sessionStart = 0, sessionCollected = 0;
+setTimeout(() => { gameStarted = true; sessionStart = performance.now(); }, 4000);
 let platZ = PLAT_Z_MIN;
 
 function spawnCoin(x, y, z, type, velX=0, velY=0, velZ=0){
@@ -684,6 +696,7 @@ function collectCoin(mesh, body){
   const mult = getMultiplier(combo);
   const val = typeValue(type);
   tokens += val * mult;
+  sessionCollected += val;  // Track for stats panel
   // Track collectible progress
   collected[type === 'gem' ? 'gems' : type === 'diamond' ? 'diamonds' : 'coins'] += val;
   checkLevelComplete();
@@ -809,6 +822,17 @@ function loop(time) {
 
   indicator.position.set(dropX, shelfTop + 0.3, SD/2 - 0.3);
   camera.lookAt(0, -0.4, 1.5);
+  
+  // Update stats panel (every frame — cheap DOM updates)
+  if (gameStarted && sessionStart > 0) {
+    const elapsed = Math.floor((time - sessionStart) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    document.getElementById('stat-time').textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+  document.getElementById('stat-level').textContent = currentLevel + 1;
+  document.getElementById('stat-collected').textContent = sessionCollected;
+  
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
@@ -832,6 +856,8 @@ document.getElementById('reset-btn').addEventListener('click',()=>{
   giantCoinCharged = false; diamondSent = false; gemSent = false;
   currentLevel = 0;
   collected = { coins: 0, diamonds: 0, gems: 0 };
+  sessionCollected = 0;
+  sessionStart = performance.now();
   updateLevelUI();
   document.getElementById('combo').style.opacity = 0;
   document.getElementById('giant-btn').classList.remove('charged');
