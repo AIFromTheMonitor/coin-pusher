@@ -184,7 +184,7 @@ addRail(-PLAT_W/2 + 0.05);
 addRail(PLAT_W/2 - 0.05);
 
 // Front pusher face — extends down to push lower shelf coins
-const faceH = PLAT_Y + PLAT_H/2 - shelfTop + 0.12;
+const faceH = PLAT_Y + PLAT_H/2 - shelfTop;
 const faceY = shelfTop + faceH/2 - PLAT_Y;
 const frontFace = new THREE.Mesh(
   new THREE.BoxGeometry(PLAT_W - 0.15, faceH, 0.04),
@@ -385,8 +385,8 @@ world.createCollider(
 
 // Front pusher face — pushes both lower shelf + platform-top coins
 world.createCollider(
-  RAPIER.ColliderDesc.cuboid(PLAT_W/2 - 0.1, 0.23, 0.03)
-    .setTranslation(0, -0.09, PLAT_D/2)
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2 - 0.1, 0.165, 0.03)
+    .setTranslation(0, -0.145, PLAT_D/2)
     .setFriction(0.2).setRestitution(0.01),
   platPhys
 );
