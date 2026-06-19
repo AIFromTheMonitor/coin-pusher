@@ -267,37 +267,37 @@ function makeSparkSystem(count, cx, cy, cz, spreadW, spreadH, spreadD, tex, colo
 
 // Title sparkles — around the COIN PUSHER sign
 const titleSpark = makeSparkSystem(
-  45, 0, PLAT_TOP + BACK_H + 0.8, BACK_Z,  // center
+  70, 0, PLAT_TOP + BACK_H + 0.8, BACK_Z,  // center
   13, 2.8, 0.6,                              // spread W,H,D
-  sparkTexPink, 0xff44aa, 0.35, 998
+  sparkTexPink, 0xff44aa, 0.50, 998
 );
 
 // Left wall sparkles — along the left side panels/trim
 const wallSparkL = makeSparkSystem(
-  25, -SW/2 - 0.15, shelfY + 0.15, 0,       // center
+  40, -SW/2 - 0.15, shelfY + 0.15, 0,       // center
   0.15, 0.8, 2.0,                             // tight spread — only visible area
-  sparkTexCyan, 0x44ddff, 0.22, 997
+  sparkTexCyan, 0x44ddff, 0.32, 997
 );
 
 // Right wall sparkles — along the right side panels/trim
 const wallSparkR = makeSparkSystem(
-  25, SW/2 + 0.15, shelfY + 0.15, 0,
+  40, SW/2 + 0.15, shelfY + 0.15, 0,
   0.15, 0.8, 2.0,
-  sparkTexPink, 0xff44aa, 0.22, 997
+  sparkTexPink, 0xff44aa, 0.32, 997
 );
 
 // Back wall sparkles — along the back neon strip
 const backSpark = makeSparkSystem(
-  30, 0, shelfY + 0.6, -SD/2 - 0.2,
+  45, 0, shelfY + 0.6, -SD/2 - 0.2,
   SW + 1.6, 0.3, 0.1,
-  sparkTexCyan, 0x44ddff, 0.20, 997
+  sparkTexCyan, 0x44ddff, 0.28, 997
 );
 
 // Front sparkles — along the front pink neon strip
 const frontSpark = makeSparkSystem(
-  25, 0, shelfY - 0.1, SD/2 + 0.55,
+  40, 0, shelfY - 0.1, SD/2 + 0.55,
   SW + 1.2, 0.2, 0.1,
-  sparkTexPink, 0xff44aa, 0.20, 997
+  sparkTexPink, 0xff44aa, 0.28, 997
 );
 
 // Sparkle animation helper
