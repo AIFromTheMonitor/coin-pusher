@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coin Pusher 🪙</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#1a1a2e;font-family:'Segoe UI',system-ui,sans-serif;user-select:none}
+canvas{display:block}
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
+#score-area{position:absolute;top:20px;left:50%;transform:translateX(-50%);text-align:center}
+#score-label{color:rgba(255,255,255,0.3);font-size:10px;letter-spacing:4px}
+#score{color:#ffd700;font-size:56px;font-weight:900;text-shadow:0 0 40px rgba(255,215,0,0.4)}
+#combo{position:absolute;top:90px;left:50%;transform:translateX(-50%);font-size:32px;font-weight:900;opacity:0;transition:opacity 0.3s;white-space:nowrap}
+.combo-fire{color:#ff4400;text-shadow:0 0 40px rgba(255,68,0,0.5)}
+.combo-cascade{color:#ff8800;text-shadow:0 0 60px rgba(255,136,0,0.6)}
+.combo-jackpot{color:#ffd700;text-shadow:0 0 80px rgba(255,215,0,0.7);animation:pulse 0.5s infinite alternate}
+@keyframes pulse{from{transform:translateX(-50%) scale(1)}to{transform:translateX(-50%) scale(1.15)}}
+#mute-btn{position:fixed;top:20px;right:20px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:20px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20}
+#mute-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8)}
+#mute-btn.muted{color:rgba(255,255,255,0.2)}
+#reset-btn{position:fixed;top:20px;left:20px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:18px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20}
+#reset-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8)}
+#status{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.15);font-size:11px;letter-spacing:2px}
+#wall-indicator{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);font-size:18px;font-weight:900;color:#4488ff;text-shadow:0 0 30px rgba(68,136,255,0.6);opacity:0;transition:opacity 0.3s;white-space:nowrap}
+#wall-indicator.active{opacity:1;animation:wallPulse 1s infinite alternate}
+@keyframes wallPulse{from{text-shadow:0 0 20px rgba(68,136,255,0.5)}to{text-shadow:0 0 50px rgba(68,136,255,0.9)}}
+.back-btn{position:fixed;top:12px;left:12px;z-index:9999;background:rgba(0,0,0,0.5);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:20px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:4px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);transition:opacity 0.2s}
+.back-btn:hover{opacity:0.8}
+.back-btn:active{opacity:0.6}
+</style>
+</head>
+<body>
+<a href="/" class="back-btn">← ゲーム一覧</a>
+<div id="ui">
+  <div id="score-area"><div id="score-label">TOKENS</div><div id="score">100</div></div>
+  <div id="combo"></div>
+  <div id="status">▼ Drop coins ▼</div>
+  <div id="wall-indicator">🧱 WALL 15s</div>
+  <button id="mute-btn" title="Mute">🔊</button>
+  <button id="reset-btn" title="Restart">🔄</button>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.14.0/rapier.es.js';
+await RAPIER.init();
+
+// ─── SCENE ──────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x2a2a3e);
+const camera = new THREE.PerspectiveCamera(35, innerWidth/innerHeight, 0.1, 40);
+camera.position.set(0, 4, 9);
+camera.lookAt(0, -0.4, 1.5);
+const origCam = camera.position.clone();
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.6;
+document.body.prepend(renderer.domElement);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xaabbcc, 2.0));
+const sun = new THREE.DirectionalLight(0xffffff, 3.5);
+sun.position.set(5, 12, 4); sun.castShadow = true;
+sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.left=-10;sun.shadow.camera.right=10;
+sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;
+sun.shadow.camera.near=0.5;sun.shadow.camera.far=30;
+sun.shadow.bias=-0.0003;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xffffff, 1.0);
+fill.position.set(0, 3, 8); scene.add(fill);
+
+// ─── MATERIALS ──────────────────────────────
+const feltMat = new THREE.MeshStandardMaterial({color:0x2a5a3a, roughness:0.95});
+const metalMat = new THREE.MeshStandardMaterial({color:0xdaa520, roughness:0.2, metalness:0.9});
+const cabMat = new THREE.MeshStandardMaterial({color:0x1a1a2e, roughness:0.6});
+const glassMat = new THREE.MeshPhysicalMaterial({color:0x88bbff, roughness:0, metalness:0, transparent:true, opacity:0.06, side:THREE.DoubleSide});
+const platMat = new THREE.MeshStandardMaterial({color:0xffd700, roughness:0.1, metalness:0.95, emissive:0x664400, emissiveIntensity:0.7});
+const neonRed = new THREE.MeshStandardMaterial({color:0xff2200, emissive:0xff2200, emissiveIntensity:0.8, transparent:true, opacity:0.5});
+const neonBlue = new THREE.MeshStandardMaterial({color:0x4444ff, emissive:0x4444ff, emissiveIntensity:0.8, transparent:true, opacity:0.5});
+const goldCoin = new THREE.MeshPhysicalMaterial({color:0xffd700, metalness:0.9, roughness:0.08, clearcoat:0.1, envMapIntensity:2.0});
+const silverCoin = new THREE.MeshPhysicalMaterial({color:0xc0c0d0, metalness:0.85, roughness:0.1, clearcoat:0.08, envMapIntensity:1.8});
+
+// ─── DIMENSIONS ─────────────────────────────
+const SW = 10, SD = 8, SH = 0.12;
+const shelfY = -0.8;
+const shelfTop = shelfY + SH/2;  // -0.74
+
+// Moving platform (the "step" — slides back/forth)
+const PLAT_W = SW - 0.6;
+const PLAT_D = 5.0;
+const PLAT_H = 0.1;
+const PLAT_Y = shelfTop + 0.28;
+const PLAT_TOP = PLAT_Y + PLAT_H/2;
+const PLAT_Z_MIN = -2.0;   // retracted
+const PLAT_Z_MAX = 0.0;    // extended
+
+// Fixed back wall (behind platform, stops coins on retract)
+const BACK_Z = -2.5;
+const BACK_H = 0.35;
+
+// ─── LOWER SHELF (green felt) ───────────────
+const shelf = new THREE.Mesh(new THREE.BoxGeometry(SW, SH, SD), feltMat);
+shelf.position.set(0, shelfY, 0);
+shelf.receiveShadow = true;
+scene.add(shelf);
+
+// Trim
+function addTrim(x,y,z,w,h,d,mat=metalMat){
+  const t = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
+  t.position.set(x,y,z); t.castShadow=true; scene.add(t);
+}
+addTrim(-SW/2-0.04, shelfY+SH/2, 0, 0.06, SH+0.02, SD+0.06);
+addTrim(SW/2+0.04, shelfY+SH/2, 0, 0.06, SH+0.02, SD+0.06);
+
+// ─── MOVING PLATFORM ────────────────────────
+const platGroup = new THREE.Group();
+platGroup.position.set(0, PLAT_Y, PLAT_Z_MIN);
+scene.add(platGroup);
+
+const platBody = new THREE.Mesh(new THREE.BoxGeometry(PLAT_W, PLAT_H, PLAT_D), platMat);
+platBody.castShadow = true; platBody.receiveShadow = true;
+platGroup.add(platBody);
+
+// Platform front edge highlight
+const platEdge = new THREE.Mesh(
+  new THREE.BoxGeometry(PLAT_W - 0.1, 0.015, 0.06),
+  new THREE.MeshStandardMaterial({color:0xffee88, roughness:0.1, metalness:0.8, emissive:0x553300, emissiveIntensity:0.5})
+);
+platEdge.position.set(0, PLAT_H/2 + 0.01, PLAT_D/2 - 0.1);
+platGroup.add(platEdge);
+
+// Platform side rails
+function addRail(x){
+  const r = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.05, PLAT_D - 0.1), metalMat);
+  r.position.set(x, PLAT_H/2 + 0.025, 0);
+  r.castShadow = true; platGroup.add(r);
+}
+addRail(-PLAT_W/2 + 0.05);
+addRail(PLAT_W/2 - 0.05);
+
+// Front pusher face — extends down to push lower shelf coins
+const faceH = PLAT_Y + PLAT_H/2 - shelfTop;
+const faceY = shelfTop + faceH/2 - PLAT_Y;
+const frontFace = new THREE.Mesh(
+  new THREE.BoxGeometry(PLAT_W - 0.15, faceH, 0.04),
+  new THREE.MeshStandardMaterial({color:0xffee88, roughness:0.1, metalness:0.8})
+);
+frontFace.position.set(0, faceY, PLAT_D/2);
+frontFace.castShadow = true;
+platGroup.add(frontFace);
+
+// ─── FIXED BACK WALL ────────────────────────
+const backWall = new THREE.Mesh(
+  new THREE.BoxGeometry(PLAT_W + 0.15, BACK_H, 0.1), platMat);
+backWall.position.set(0, PLAT_TOP + BACK_H/2, BACK_Z);
+backWall.castShadow = true;
+scene.add(backWall);
+
+// ─── CABINET ────────────────────────────────
+const cabBody = new THREE.Mesh(new THREE.BoxGeometry(SW+1.8, 0.15, SD+1.2), cabMat);
+cabBody.position.set(0, -1.3, 0); cabBody.receiveShadow = true;
+scene.add(cabBody);
+
+function addGlass(x,y,z,w,h,d){
+  const g = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), glassMat);
+  g.position.set(x,y,z); scene.add(g);
+}
+addGlass(-SW/2-0.2, shelfY+0.3, 0, 0.06, 0.6, SD+0.4);
+addGlass(SW/2+0.2, shelfY+0.3, 0, 0.06, 0.6, SD+0.4);
+addGlass(0, shelfY+0.3, SD/2+0.3, SW+0.6, 0.6, 0.04);
+
+function addNeon(x,y,z,w,h,d,mat){
+  const n = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
+  n.position.set(x,y,z); scene.add(n);
+}
+addNeon(0, shelfY+0.62, -SD/2-0.1, SW+1.6, 0.015, 0.04, neonBlue);
+addNeon(0, shelfY+0.62, SD/2+0.5, SW+1.6, 0.015, 0.04, neonBlue);
+addNeon(-SW/2-0.6, shelfY+0.1, 0, 0.015, 0.5, SD+0.8, neonBlue);
+addNeon(SW/2+0.6, shelfY+0.1, 0, 0.015, 0.5, SD+0.8, neonBlue);
+addNeon(0, shelfY-0.15, SD/2+0.5, SW+1.2, 0.015, 0.04, neonRed);
+
+// ─── COIN WALL POWER-UP ────────────────────
+let coinWallActive = false, coinWallTimer = 0;
+const COIN_WALL_DURATION = 15;
+const WALL_H = 0.7, WALL_Y_HIDDEN = shelfY - 0.5, WALL_Y_ACTIVE = shelfTop + WALL_H/2;
+const wallMat = new THREE.MeshStandardMaterial({color:0x4488ff, emissive:0x4488ff, emissiveIntensity:1.2, transparent:true, opacity:0.7});
+
+function createWall(sideX){
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, WALL_H, SD/2 + 0.3), wallMat);
+  mesh.position.set(sideX, WALL_Y_HIDDEN, 0);
+  scene.add(mesh);
+  const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(sideX, WALL_Y_HIDDEN, 0));
+  world.createCollider(RAPIER.ColliderDesc.cuboid(0.03, WALL_H/2, SD/4 + 0.15).setFriction(0.1), body);
+  return {mesh, body};
+}
+// Created after world init below
+
+// ─── PHYSICS ───────────────────────────────
+const world = new RAPIER.World({x:0, y:-9.81, z:0});
+
+// Lower shelf surface
+world.createCollider(RAPIER.ColliderDesc.cuboid(SW/2, 0.02, SD/2).setFriction(0.7),
+  world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, shelfTop - 0.02, 0)));
+
+// Side walls (lower)
+[[-SW/2-0.04],[SW/2+0.04]].forEach(([x])=>{
+  world.createCollider(RAPIER.ColliderDesc.cuboid(0.04, 0.3, SD/2).setFriction(0.3),
+    world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x, shelfTop+0.1, 0)));
+});
+
+// Coin wall power-up walls (kinematic, hidden below)
+const wallLeft = createWall(-SW/2 - 0.06);
+const wallRight = createWall(SW/2 + 0.06);
+
+// Moving platform — KINEMATIC
+const platPhys = world.createRigidBody(
+  RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, PLAT_TOP - 0.02, PLAT_Z_MIN)
+);
+world.createCollider(
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2, 0.08, PLAT_D/2).setFriction(0.8).setRestitution(0.01),
+  platPhys
+);
+
+// Front pusher face — pushes coins on lower shelf
+world.createCollider(
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2 - 0.1, 0.165, 0.03)
+    .setTranslation(0, -0.145, PLAT_D/2)
+    .setFriction(0.2).setRestitution(0.01),
+  platPhys
+);
+
+// Fixed back wall
+world.createCollider(
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2 + 0.1, BACK_H/2, 0.05).setFriction(0.3).setRestitution(0.01),
+  world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, PLAT_TOP + BACK_H/2, BACK_Z))
+);
+
+// ─── COINS ─────────────────────────────────
+const CR = 0.28, CH = 0.05;
+const coinGeo = new THREE.CylinderGeometry(CR, CR, CH, 32);
+const COLLECT_Y = shelfY - 0.4;
+
+let meshes = new Map(), bodies = new Map();
+let tokens = 100;
+let pushTm = 0;
+let muted = false;
+let gameStarted = false;
+setTimeout(() => gameStarted = true, 4000);
+let platZ = PLAT_Z_MIN;
+
+function spawnCoin(x, y, z, isGold){
+  const mat = isGold ? goldCoin : (Math.random()<0.7 ? goldCoin : silverCoin);
+  const mesh = new THREE.Mesh(coinGeo, mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.position.set(x, y, z);
+  scene.add(mesh);
+  const body = world.createRigidBody(
+    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinearDamping(0.06).setAngularDamping(0.35)
+  );
+  world.createCollider(RAPIER.ColliderDesc.cylinder(CH/2, CR).setFriction(0.4).setRestitution(0.02).setDensity(1.2), body);
+  meshes.set(body.handle, mesh);
+  bodies.set(mesh.uuid, body);
+}
+
+// Seed coins — on platform + lower shelf
+function seedCoins(){
+  const spots = [];
+  // On the platform (between back wall and front edge)
+  const pBack = Math.max(PLAT_Z_MIN - PLAT_D/2 + 0.3, BACK_Z + 0.3);
+  const pFront = PLAT_Z_MIN + PLAT_D/2 - 0.4;
+  for(let z=pBack; z<pFront; z+=0.3){
+    for(let x=-PLAT_W/2+0.5; x<PLAT_W/2-0.5; x+=0.28){
+      if(Math.random()>0.25) spots.push({x:x+(Math.random()-0.5)*0.15, z:z+(Math.random()-0.5)*0.15, layer:0, onPlat:true});
+    }
+  }
+  for(let z=pBack+0.15; z<pFront-0.2; z+=0.35){
+    for(let x=-PLAT_W/2+1; x<PLAT_W/2-1; x+=0.34){
+      if(Math.random()>0.45) spots.push({x:x+(Math.random()-0.5)*0.2, z:z+(Math.random()-0.5)*0.2, layer:1, onPlat:true});
+    }
+  }
+  // On lower shelf
+  const loStart = PLAT_Z_MAX + PLAT_D/2 + 0.3;
+  for(let z=loStart; z<SD/2-0.8; z+=0.3){
+    for(let x=-SW/2+0.5; x<SW/2-0.5; x+=0.28){
+      if(Math.random()>0.2) spots.push({x:x+(Math.random()-0.5)*0.15, z:z+(Math.random()-0.5)*0.15, layer:0, onPlat:false});
+    }
+  }
+  let idx=0;
+  function batch(){
+    for(let b=0; b<12 && idx<spots.length; b++, idx++){
+      const s=spots[idx];
+      const y = s.onPlat ? PLAT_TOP + CH/2 + 0.02 + s.layer*CH*0.9 : shelfTop + CH/2 + 0.02 + s.layer*CH*0.9;
+      spawnCoin(s.x, y, s.z, Math.random()<0.7);
+    }
+    if(idx<spots.length) setTimeout(batch, 15);
+  }
+  setTimeout(batch, 200);
+}
+
+// ─── DROP COIN ─────────────────────────────
+let dropX = 0;
+const DROP_X_MIN = -PLAT_W/2+0.5, DROP_X_MAX = PLAT_W/2-0.5;
+
+const indGeo = new THREE.BoxGeometry(0.06, 0.4, 0.06);
+const indMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.7});
+const indicator = new THREE.Mesh(indGeo, indMat);
+indicator.position.set(0, PLAT_TOP + 0.4, BACK_Z);
+scene.add(indicator);
+
+function dropCoin(){
+  if(tokens <= 0) return;
+  tokens--;
+  document.getElementById('score').textContent = tokens;
+  const x = dropX + (Math.random()-0.5)*0.3;
+  const z = BACK_Z + 0.3 + Math.random() * 0.5;
+  spawnCoin(x, PLAT_TOP + 0.7, z, true);
+  playSound(600, 0.05);
+  indMat.opacity = 1.0;
+  setTimeout(() => indMat.opacity = 0.7, 100);
+}
+
+// ─── GIANT COIN ─────────────────────────────
+const GCR = CR * 3, GCH = CH * 3;
+const giantCoinGeo = new THREE.CylinderGeometry(GCR, GCR, GCH, 48);
+const giantCoinMat = new THREE.MeshPhysicalMaterial({color:0xffd700, metalness:0.95, roughness:0.05, emissive:0xffaa00, emissiveIntensity:0.6, clearcoat:0.3});
+
+function spawnGiantCoin(){
+  const x = dropX + (Math.random()-0.5)*0.5;
+  const z = BACK_Z + 0.8;
+  const y = PLAT_TOP + 2.5;
+  const mesh = new THREE.Mesh(giantCoinGeo, giantCoinMat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.position.set(x, y, z);
+  scene.add(mesh);
+  const body = world.createRigidBody(
+    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinearDamping(0.03).setAngularDamping(0.2)
+  );
+  world.createCollider(RAPIER.ColliderDesc.cylinder(GCH/2, GCR).setFriction(0.4).setRestitution(0.05).setDensity(6.0), body);
+  meshes.set(body.handle, mesh);
+  bodies.set(mesh.uuid, body);
+  playSound(120, 0.3);
+}
+
+// ─── PLATFORM ANIMATION ────────────────────
+const CYCLE = 3.2;
+
+function updatePlatform(dt){
+  if(!gameStarted) return;
+  pushTm += dt;
+  const t = (pushTm % CYCLE) / CYCLE;
+  let p = t < 0.55 ? t/0.55 : 1-(t-0.55)/0.45;
+  p = p*p*(3-2*p);
+  platZ = PLAT_Z_MIN + p * (PLAT_Z_MAX - PLAT_Z_MIN);
+  
+  // Move visual
+  platGroup.position.z = platZ;
+  
+  // Move physics
+  const pos = platPhys.translation();
+  platPhys.setNextKinematicTranslation(new RAPIER.Vector3(pos.x, pos.y, platZ));
+}
+
+// ─── SOUNDS ────────────────────────────────
+function playSound(f, d){
+  if(muted) return;
+  try{
+    const c=new(window.AudioContext||window.webkitAudioContext)();
+    const o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);
+    o.frequency.setValueAtTime(f+Math.random()*300,c.currentTime);
+    g.gain.setValueAtTime(0.05,c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+d);
+    o.start();o.stop(c.currentTime+d);
+  }catch(e){}
+}
+function playCollect(){
+  if(muted) return;
+  try{
+    const c=new(window.AudioContext||window.webkitAudioContext)();
+    [880,1100,1320].forEach((f,i)=>{
+      const o=c.createOscillator(),g=c.createGain();
+      o.connect(g);g.connect(c.destination);o.type='sine';
+      o.frequency.setValueAtTime(f,c.currentTime+i*0.04);
+      g.gain.setValueAtTime(0.04,c.currentTime+i*0.04);
+      g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+i*0.04+0.15);
+      o.start(c.currentTime+i*0.04);o.stop(c.currentTime+i*0.04+0.15);
+    });
+  }catch(e){}
+}
+
+// ─── COLLECT ───────────────────────────────
+let combo = 0, lastCol = 0, giantSent = false;
+function getMultiplier(c) {
+  if (c >= 8) return 5;
+  if (c >= 5) return 3;
+  if (c >= 3) return 2;
+  return 1;
+}
+function collectCoin(mesh, body){
+  world.removeRigidBody(body);
+  scene.remove(mesh);
+  meshes.delete(body.handle); bodies.delete(mesh.uuid);
+  const now=performance.now();
+  combo=(now-lastCol<2000)?combo+1:1;
+  lastCol=now;
+  const mult = getMultiplier(combo);
+  tokens += mult;
+  document.getElementById('score').textContent = tokens;
+  playCollect();
+  const c=document.getElementById('combo');
+  if(combo>=8){c.textContent=`🎰 JACKPOT x${combo}! ${mult}x`;c.className='combo-jackpot';
+    if(!giantSent){ giantSent=true; spawnGiantCoin(); }
+  }
+  else if(combo>=4){c.textContent=`🌊 CASCADE x${combo}! ${mult}x`;c.className='combo-cascade';}
+  else if(combo>=2){c.innerHTML=`🔥 ${combo}x COMBO &middot; ${mult}x`;c.className='combo-fire';}
+  else c.style.opacity=0;
+  if(combo>=2){c.style.opacity=1;clearTimeout(c._t);c._t=setTimeout(()=>c.style.opacity=0,2500);}
+  // 5% chance to activate coin wall
+  if(!coinWallActive && Math.random() < 0.05){
+    activateCoinWall();
+  }
+}
+
+// ─── COIN WALL LOGIC ─────────────────────────
+function activateCoinWall(){
+  coinWallActive = true;
+  coinWallTimer = COIN_WALL_DURATION;
+  const el = document.getElementById('wall-indicator');
+  el.classList.add('active');
+}
+
+function updateCoinWall(dt){
+  const el = document.getElementById('wall-indicator');
+  if(coinWallActive){
+    coinWallTimer -= dt;
+    el.textContent = `🧱 WALL ${Math.ceil(coinWallTimer)}s`;
+    // Animate walls up
+    const wy = WALL_Y_ACTIVE;
+    wallLeft.mesh.position.y += (wy - wallLeft.mesh.position.y) * Math.min(dt * 8, 1);
+    wallRight.mesh.position.y += (wy - wallRight.mesh.position.y) * Math.min(dt * 8, 1);
+    wallLeft.body.setNextKinematicTranslation({x: wallLeft.mesh.position.x, y: wallLeft.mesh.position.y, z: 0});
+    wallRight.body.setNextKinematicTranslation({x: wallRight.mesh.position.x, y: wallRight.mesh.position.y, z: 0});
+    if(coinWallTimer <= 0){
+      coinWallActive = false;
+      el.classList.remove('active');
+    }
+  } else {
+    // Sink walls back down
+    if(wallLeft.mesh.position.y > WALL_Y_HIDDEN + 0.01){
+      wallLeft.mesh.position.y += (WALL_Y_HIDDEN - wallLeft.mesh.position.y) * Math.min(dt * 6, 1);
+      wallRight.mesh.position.y += (WALL_Y_HIDDEN - wallRight.mesh.position.y) * Math.min(dt * 6, 1);
+      wallLeft.body.setNextKinematicTranslation({x: wallLeft.mesh.position.x, y: wallLeft.mesh.position.y, z: 0});
+      wallRight.body.setNextKinematicTranslation({x: wallRight.mesh.position.x, y: wallRight.mesh.position.y, z: 0});
+    }
+  }
+}
+
+// ─── GAME LOOP ─────────────────────────────
+let lastT=performance.now();
+function loop(time){
+  const dt=Math.min((time-lastT)/1000,0.05);
+  lastT=time;
+  
+  world.step();
+  updatePlatform(dt);
+  updateCoinWall(dt);
+  
+  const toRemove=[];
+  for(const [h,mesh] of meshes){
+    const body=bodies.get(mesh.uuid);
+    if(!body) continue;
+    try{
+      const p=body.translation(), r=body.rotation();
+      mesh.position.set(p.x,p.y,p.z);
+      mesh.quaternion.set(r.x,r.y,r.z,r.w);
+      if(gameStarted && p.y < COLLECT_Y) toRemove.push({mesh,body});
+    }catch(e){}
+  }
+  toRemove.sort((a,b)=>a.mesh.position.y-b.mesh.position.y);
+  toRemove.forEach(({mesh,body})=>collectCoin(mesh,body));
+  
+  if(combo>0 && performance.now()-lastCol>3000){
+    combo=0; giantSent=false;
+    document.getElementById('combo').style.opacity=0;
+  }
+  
+  indicator.position.set(dropX, PLAT_TOP + 0.4, BACK_Z);
+  
+  camera.lookAt(0, -0.4, 1.5);
+  renderer.render(scene,camera);
+  requestAnimationFrame(loop);
+}
+
+// ─── INPUT ─────────────────────────────────
+document.getElementById('reset-btn').addEventListener('click',()=>{
+  // Clear all existing coins
+  for(const [h,mesh] of meshes){
+    const body = bodies.get(mesh.uuid);
+    if(body){ world.removeRigidBody(body); }
+    scene.remove(mesh);
+  }
+  meshes.clear(); bodies.clear();
+  // Reset tokens
+  tokens = 100;
+  document.getElementById('score').textContent = tokens;
+  combo = 0;
+  giantSent = false;
+  document.getElementById('combo').style.opacity = 0;
+  // Reset coin wall
+  coinWallActive = false; coinWallTimer = 0;
+  wallLeft.mesh.position.y = WALL_Y_HIDDEN;
+  wallRight.mesh.position.y = WALL_Y_HIDDEN;
+  wallLeft.body.setNextKinematicTranslation({x: wallLeft.mesh.position.x, y: WALL_Y_HIDDEN, z: 0});
+  wallRight.body.setNextKinematicTranslation({x: wallRight.mesh.position.x, y: WALL_Y_HIDDEN, z: 0});
+  document.getElementById('wall-indicator').classList.remove('active');
+  // Re-seed
+  seedCoins();
+});
+document.getElementById('mute-btn').addEventListener('click',()=>{
+  muted=!muted;
+  const b=document.getElementById('mute-btn');
+  b.textContent=muted?'🔇':'🔊';
+  muted?b.classList.add('muted'):b.classList.remove('muted');
+});
+renderer.domElement.addEventListener('click',(e)=>{if(e.target===renderer.domElement)dropCoin();});
+renderer.domElement.addEventListener('mousemove',(e)=>{
+  const r=renderer.domElement.getBoundingClientRect();
+  const mx=((e.clientX-r.left)/r.width)*2-1;
+  dropX=Math.max(DROP_X_MIN,Math.min(DROP_X_MAX,mx*(DROP_X_MAX-DROP_X_MIN)/2));
+});
+addEventListener('keydown',(e)=>{
+  if(e.code==='Space'||e.code==='Enter'){e.preventDefault();dropCoin();}
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){e.preventDefault();dropX=Math.max(DROP_X_MIN,dropX-0.3);}
+  if(e.code==='ArrowRight'||e.code==='KeyD'){e.preventDefault();dropX=Math.min(DROP_X_MAX,dropX+0.3);}
+});
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+loop(performance.now());
+seedCoins();
+</script>
+</body>
+</html>
