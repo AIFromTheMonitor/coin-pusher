@@ -751,8 +751,8 @@ function loop(time){
   animateSparkles(backSpark, sparkTime);
   animateSparkles(frontSpark, sparkTime);
   
-  // Auto-drop: fire every 250ms, advance shooter by AUTO_STEP each shot
-  if (autoMode && gameStarted && time - autoLastDrop > 250) {
+  // Auto-drop: fire every 4s, advance shooter by AUTO_STEP each shot
+  if (autoMode && gameStarted && time - autoLastDrop > 4000) {
     if (tokens > 0) {
       dropCoin();
       autoLastDrop = time;
