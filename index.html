@@ -9,10 +9,19 @@
 body{overflow:hidden;background:#1a1a2e;font-family:'Segoe UI',system-ui,sans-serif;user-select:none}
 canvas{display:block}
 #ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
-#score-area{position:absolute;top:20px;left:50%;transform:translateX(-50%);text-align:center}
-#score-label{color:rgba(255,255,255,0.3);font-size:10px;letter-spacing:4px}
-#score{color:#ffd700;font-size:56px;font-weight:900;text-shadow:0 0 40px rgba(255,215,0,0.4)}
+#score-area{position:fixed;top:48px;left:20px;text-align:left;z-index:12}
+#score-label{color:rgba(255,255,255,0.3);font-size:9px;letter-spacing:3px}
+#score{color:#ffd700;font-size:36px;font-weight:900;text-shadow:0 0 30px rgba(255,215,0,0.4);line-height:1}
 #combo{position:absolute;top:90px;left:50%;transform:translateX(-50%);font-size:32px;font-weight:900;opacity:0;transition:opacity 0.3s;white-space:nowrap}
+#reset-btn{position:fixed;top:52px;right:20px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:18px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20}
+#level-info{position:fixed;top:18px;right:70px;font-size:13px;font-weight:700;color:#ffd700;text-shadow:0 0 20px rgba(255,215,0,0.3);white-space:nowrap;text-align:center;z-index:15;background:rgba(10,10,20,0.7);padding:6px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.08)}
+.level-bar-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px}
+.level-icon{font-size:14px}
+.level-bar{width:60px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden}
+.level-fill{height:100%;border-radius:3px;transition:width 0.3s}
+.level-fill.coin{background:linear-gradient(90deg,#ffd700,#ffaa00)}
+.level-fill.diamond{background:linear-gradient(90deg,#44aaff,#88ccff)}
+.level-fill.gem{background:linear-gradient(90deg,#ff44aa,#ff88cc)}
 .combo-fire{color:#ff4400;text-shadow:0 0 40px rgba(255,68,0,0.5)}
 .combo-cascade{color:#ff8800;text-shadow:0 0 60px rgba(255,136,0,0.6)}
 .combo-jackpot{color:#ffd700;text-shadow:0 0 80px rgba(255,215,0,0.7);animation:pulse 0.5s infinite alternate}
@@ -20,7 +29,9 @@ canvas{display:block}
 #mute-btn{position:fixed;top:20px;right:20px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:20px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20}
 #mute-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8)}
 #mute-btn.muted{color:rgba(255,255,255,0.2)}
-#reset-btn{position:fixed;top:20px;left:20px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.5);font-size:18px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20}
+#giant-btn{display:none;position:fixed;top:96px;left:20px;pointer-events:all;cursor:pointer;background:linear-gradient(135deg,#ff6600,#cc3300);border:1px solid #ffaa00;color:#fff;font-size:10px;font-weight:900;padding:3px 10px;border-radius:10px;font-family:inherit;z-index:25;text-shadow:0 0 6px rgba(255,255,255,0.5);box-shadow:0 0 18px rgba(255,100,0,0.6);animation:giantPulse 0.6s infinite alternate;letter-spacing:0.5px}
+#giant-btn.charged{display:block}
+@keyframes giantPulse{from{box-shadow:0 0 15px rgba(255,100,0,0.4)}to{box-shadow:0 0 40px rgba(255,100,0,0.9)}}
 #reset-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8)}
 #status{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.15);font-size:11px;letter-spacing:2px}
 #wall-indicator{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);font-size:18px;font-weight:900;color:#4488ff;text-shadow:0 0 30px rgba(68,136,255,0.6);opacity:0;transition:opacity 0.3s;white-space:nowrap}
@@ -34,7 +45,8 @@ canvas{display:block}
 <body>
 <a href="/" class="back-btn">← ゲーム一覧</a>
 <div id="ui">
-  <div id="score-area"><div id="score-label">TOKENS</div><div id="score">100</div></div>
+  <div id="score-area"><div id="score-label">TOKENS</div><div id="score">100</div><button id="giant-btn">💥 GIANT COIN</button></div>
+  <div id="level-info">Lv1 · 🪙0/30</div>
   <div id="combo"></div>
   <div id="status">▼ Drop coins ▼</div>
   <div id="wall-indicator">🧱 WALL 15s</div>
@@ -87,6 +99,10 @@ const neonRed = new THREE.MeshStandardMaterial({color:0xff2200, emissive:0xff220
 const neonBlue = new THREE.MeshStandardMaterial({color:0x4444ff, emissive:0x4444ff, emissiveIntensity:0.8, transparent:true, opacity:0.5});
 const goldCoin = new THREE.MeshPhysicalMaterial({color:0xffd700, metalness:0.9, roughness:0.08, clearcoat:0.1, envMapIntensity:2.0});
 const silverCoin = new THREE.MeshPhysicalMaterial({color:0xc0c0d0, metalness:0.85, roughness:0.1, clearcoat:0.08, envMapIntensity:1.8});
+
+// Diamond & Gem collectibles
+const diaMat = new THREE.MeshPhysicalMaterial({color:0x44aaff, metalness:0.3, roughness:0.08, emissive:0x2266cc, emissiveIntensity:0.5, clearcoat:0.3});
+const gemMat = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0.2, roughness:0.06, emissive:0xcc2288, emissiveIntensity:0.5, clearcoat:0.3});
 
 // ─── DIMENSIONS ─────────────────────────────
 const SW = 10, SD = 8, SH = 0.12;
@@ -147,7 +163,7 @@ addRail(-PLAT_W/2 + 0.05);
 addRail(PLAT_W/2 - 0.05);
 
 // Front pusher face — extends down to push lower shelf coins
-const faceH = PLAT_Y + PLAT_H/2 - shelfTop;
+const faceH = PLAT_Y + PLAT_H/2 - shelfTop + 0.12;
 const faceY = shelfTop + faceH/2 - PLAT_Y;
 const frontFace = new THREE.Mesh(
   new THREE.BoxGeometry(PLAT_W - 0.15, faceH, 0.04),
@@ -207,7 +223,7 @@ function createWall(sideX){
 const world = new RAPIER.World({x:0, y:-9.81, z:0});
 
 // Lower shelf surface
-world.createCollider(RAPIER.ColliderDesc.cuboid(SW/2, 0.02, SD/2).setFriction(0.7),
+world.createCollider(RAPIER.ColliderDesc.cuboid(SW/2, 0.02, SD/2).setFriction(0.45),
   world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, shelfTop - 0.02, 0)));
 
 // Side walls (lower)
@@ -225,14 +241,14 @@ const platPhys = world.createRigidBody(
   RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, PLAT_TOP - 0.02, PLAT_Z_MIN)
 );
 world.createCollider(
-  RAPIER.ColliderDesc.cuboid(PLAT_W/2, 0.08, PLAT_D/2).setFriction(0.8).setRestitution(0.01),
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2, 0.08, PLAT_D/2).setFriction(0.4).setRestitution(0.01),
   platPhys
 );
 
-// Front pusher face — pushes coins on lower shelf
+// Front pusher face — pushes both lower shelf + platform-top coins
 world.createCollider(
-  RAPIER.ColliderDesc.cuboid(PLAT_W/2 - 0.1, 0.165, 0.03)
-    .setTranslation(0, -0.145, PLAT_D/2)
+  RAPIER.ColliderDesc.cuboid(PLAT_W/2 - 0.1, 0.23, 0.03)
+    .setTranslation(0, -0.09, PLAT_D/2)
     .setFriction(0.2).setRestitution(0.01),
   platPhys
 );
@@ -246,9 +262,11 @@ world.createCollider(
 // ─── COINS ─────────────────────────────────
 const CR = 0.28, CH = 0.05;
 const coinGeo = new THREE.CylinderGeometry(CR, CR, CH, 32);
+const diaGeo = new THREE.OctahedronGeometry(0.24, 0);
+const gemGeo = new THREE.IcosahedronGeometry(0.22, 0);
 const COLLECT_Y = shelfY - 0.4;
 
-let meshes = new Map(), bodies = new Map();
+let meshes = new Map(), bodies = new Map(), coinTypes = new Map();
 let tokens = 100;
 let pushTm = 0;
 let muted = false;
@@ -256,18 +274,27 @@ let gameStarted = false;
 setTimeout(() => gameStarted = true, 4000);
 let platZ = PLAT_Z_MIN;
 
-function spawnCoin(x, y, z, isGold){
-  const mat = isGold ? goldCoin : (Math.random()<0.7 ? goldCoin : silverCoin);
-  const mesh = new THREE.Mesh(coinGeo, mat);
+function spawnCoin(x, y, z, type, velZ=0){
+  let geo, mat, colRadius, colHalfH, density;
+  if(type === 'diamond'){
+    geo = diaGeo; mat = diaMat; colRadius = 0.22; colHalfH = 0.04; density = 2.0;
+  } else if(type === 'gem'){
+    geo = gemGeo; mat = gemMat; colRadius = 0.20; colHalfH = 0.04; density = 1.5;
+  } else {
+    geo = coinGeo; mat = Math.random()<0.7 ? goldCoin : silverCoin; colRadius = CR; colHalfH = CH/2; density = 1.2;
+  }
+  const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true; mesh.receiveShadow = true;
   mesh.position.set(x, y, z);
   scene.add(mesh);
   const body = world.createRigidBody(
-    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinearDamping(0.06).setAngularDamping(0.35)
+    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(0, 0, velZ).setLinearDamping(0.06).setAngularDamping(0.35)
   );
-  world.createCollider(RAPIER.ColliderDesc.cylinder(CH/2, CR).setFriction(0.4).setRestitution(0.02).setDensity(1.2), body);
+  // Cylinder collider for all types (no more rolling spheres!)
+  world.createCollider(RAPIER.ColliderDesc.cylinder(colHalfH, colRadius).setFriction(0.4).setRestitution(type==='diamond'||type==='gem'?0.04:0.02).setDensity(density), body);
   meshes.set(body.handle, mesh);
   bodies.set(mesh.uuid, body);
+  coinTypes.set(body.handle, type);
 }
 
 // Seed coins — on platform + lower shelf
@@ -298,7 +325,8 @@ function seedCoins(){
     for(let b=0; b<12 && idx<spots.length; b++, idx++){
       const s=spots[idx];
       const y = s.onPlat ? PLAT_TOP + CH/2 + 0.02 + s.layer*CH*0.9 : shelfTop + CH/2 + 0.02 + s.layer*CH*0.9;
-      spawnCoin(s.x, y, s.z, Math.random()<0.7);
+      const r = Math.random();
+      spawnCoin(s.x, y, s.z, 'coin');
     }
     if(idx<spots.length) setTimeout(batch, 15);
   }
@@ -321,7 +349,8 @@ function dropCoin(){
   document.getElementById('score').textContent = tokens;
   const x = dropX + (Math.random()-0.5)*0.3;
   const z = BACK_Z + 0.3 + Math.random() * 0.5;
-  spawnCoin(x, PLAT_TOP + 0.7, z, true);
+  const r = Math.random();
+  spawnCoin(x, PLAT_TOP + 0.7, z, 'coin');
   playSound(600, 0.05);
   indMat.opacity = 1.0;
   setTimeout(() => indMat.opacity = 0.7, 100);
@@ -341,12 +370,22 @@ function spawnGiantCoin(){
   mesh.position.set(x, y, z);
   scene.add(mesh);
   const body = world.createRigidBody(
-    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinearDamping(0.03).setAngularDamping(0.2)
+    RAPIER.RigidBodyDesc.dynamic().setTranslation(x, y, z).setLinvel(0, 0, 2.0).setLinearDamping(0.03).setAngularDamping(0.2)
   );
   world.createCollider(RAPIER.ColliderDesc.cylinder(GCH/2, GCR).setFriction(0.4).setRestitution(0.05).setDensity(6.0), body);
   meshes.set(body.handle, mesh);
   bodies.set(mesh.uuid, body);
+  coinTypes.set(body.handle, 'giant');
   playSound(120, 0.3);
+}
+
+// ─── SPECIAL DROP (diamond/gem) ──────────────
+function spawnSpecialDrop(type){
+  const x = dropX + (Math.random()-0.5)*0.5;
+  const z = BACK_Z + 0.8;  // Above the stacked coins
+  const y = PLAT_TOP + 2.0;
+  spawnCoin(x, y, z, type, 2.5);  // Forward nudge so it doesn't just sit there
+  playSound(type==='gem'?180:140, 0.25);
 }
 
 // ─── PLATFORM ANIMATION ────────────────────
@@ -396,8 +435,69 @@ function playCollect(){
   }catch(e){}
 }
 
+// ─── LEVEL SYSTEM ────────────────────────────
+const levels = [
+  { coins: 1000, diamonds: 0, gems: 0 },
+  { coins: 25, diamonds: 5, gems: 0 },
+  { coins: 20, diamonds: 10, gems: 0 },
+  { coins: 30, diamonds: 10, gems: 3 },
+  { coins: 20, diamonds: 15, gems: 5 },
+  { coins: 40, diamonds: 15, gems: 8 },
+  { coins: 30, diamonds: 20, gems: 10 },
+  { coins: 50, diamonds: 20, gems: 12 },
+  { coins: 40, diamonds: 25, gems: 15 },
+  { coins: 60, diamonds: 25, gems: 20 },
+];
+let currentLevel = 0;
+let collected = { coins: 0, diamonds: 0, gems: 0 };
+
+function typeValue(type){ return type==='giant'?50 : type==='gem'?5 : type==='diamond'?3 : 1; }
+
+function checkLevelComplete(){
+  const lv = levels[currentLevel];
+  if(collected.coins >= lv.coins && collected.diamonds >= lv.diamonds && collected.gems >= lv.gems){
+    // Level complete!
+    const bonus = 10 + currentLevel * 5;
+    tokens += bonus;
+    currentLevel++;
+    collected = { coins: 0, diamonds: 0, gems: 0 };
+    diamondSent = false; gemSent = false;  // One of each per level
+    document.getElementById('score').textContent = tokens;
+    updateLevelUI();
+    playSound(200, 0.4);
+    setTimeout(() => playSound(400, 0.3), 150);
+    setTimeout(() => playSound(800, 0.4), 300);
+    if(currentLevel >= levels.length){
+      currentLevel = 0; // Loop back
+    }
+  }
+  updateLevelUI();
+}
+
+function updateLevelUI(){
+  const lv = levels[currentLevel];
+  const el = document.getElementById('level-info');
+  let html = `<div style="font-size:15px">Lv${currentLevel+1}</div><div class="level-bar-row">`;
+  if(lv.coins > 0){
+    const pct = Math.min(100, (collected.coins / lv.coins) * 100);
+    html += `<span class="level-icon">🪙</span><div class="level-bar"><div class="level-fill coin" style="width:${pct}%"></div></div>`;
+  }
+  if(lv.diamonds > 0){
+    const pct = Math.min(100, (collected.diamonds / lv.diamonds) * 100);
+    html += `<span class="level-icon">💎</span><div class="level-bar"><div class="level-fill diamond" style="width:${pct}%"></div></div>`;
+  }
+  if(lv.gems > 0){
+    const pct = Math.min(100, (collected.gems / lv.gems) * 100);
+    html += `<span class="level-icon">🔶</span><div class="level-bar"><div class="level-fill gem" style="width:${pct}%"></div></div>`;
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+updateLevelUI(); // Init display
+
 // ─── COLLECT ───────────────────────────────
-let combo = 0, lastCol = 0, giantSent = false;
+let combo = 0, lastCol = 0, giantCoinCharged = false, diamondSent = false, gemSent = false;
 function getMultiplier(c) {
   if (c >= 8) return 5;
   if (c >= 5) return 3;
@@ -405,19 +505,32 @@ function getMultiplier(c) {
   return 1;
 }
 function collectCoin(mesh, body){
+  const type = coinTypes.get(body.handle) || 'coin';
   world.removeRigidBody(body);
   scene.remove(mesh);
   meshes.delete(body.handle); bodies.delete(mesh.uuid);
+  coinTypes.delete(body.handle);
   const now=performance.now();
   combo=(now-lastCol<2000)?combo+1:1;
   lastCol=now;
   const mult = getMultiplier(combo);
-  tokens += mult;
+  const val = typeValue(type);
+  tokens += val * mult;
+  // Track collectible progress
+  collected[type === 'gem' ? 'gems' : type === 'diamond' ? 'diamonds' : 'coins'] += val;
+  checkLevelComplete();
   document.getElementById('score').textContent = tokens;
   playCollect();
   const c=document.getElementById('combo');
-  if(combo>=8){c.textContent=`🎰 JACKPOT x${combo}! ${mult}x`;c.className='combo-jackpot';
-    if(!giantSent){ giantSent=true; spawnGiantCoin(); }
+  if(combo>=12){c.textContent=`🎰 JACKPOT x${combo}! ${mult}x`;c.className='combo-jackpot';
+    if(!giantCoinCharged){ giantCoinCharged=true; document.getElementById('giant-btn').classList.add('charged'); }
+    if(!gemSent){ gemSent=true; spawnSpecialDrop('gem'); }
+  }
+  else if(combo>=8){c.textContent=`🎰 JACKPOT x${combo}! ${mult}x`;c.className='combo-jackpot';
+    if(!giantCoinCharged){ giantCoinCharged=true; document.getElementById('giant-btn').classList.add('charged'); }
+  }
+  else if(combo>=6){c.textContent=`🌊 CASCADE x${combo}! ${mult}x`;c.className='combo-cascade';
+    if(!diamondSent){ diamondSent=true; spawnSpecialDrop('diamond'); }
   }
   else if(combo>=4){c.textContent=`🌊 CASCADE x${combo}! ${mult}x`;c.className='combo-cascade';}
   else if(combo>=2){c.innerHTML=`🔥 ${combo}x COMBO &middot; ${mult}x`;c.className='combo-fire';}
@@ -488,7 +601,7 @@ function loop(time){
   toRemove.forEach(({mesh,body})=>collectCoin(mesh,body));
   
   if(combo>0 && performance.now()-lastCol>3000){
-    combo=0; giantSent=false;
+    combo=0;
     document.getElementById('combo').style.opacity=0;
   }
   
@@ -507,13 +620,17 @@ document.getElementById('reset-btn').addEventListener('click',()=>{
     if(body){ world.removeRigidBody(body); }
     scene.remove(mesh);
   }
-  meshes.clear(); bodies.clear();
+  meshes.clear(); bodies.clear(); coinTypes.clear();
   // Reset tokens
   tokens = 100;
   document.getElementById('score').textContent = tokens;
   combo = 0;
-  giantSent = false;
+  giantCoinCharged = false; diamondSent = false; gemSent = false;
+  currentLevel = 0;
+  collected = { coins: 0, diamonds: 0, gems: 0 };
+  updateLevelUI();
   document.getElementById('combo').style.opacity = 0;
+  document.getElementById('giant-btn').classList.remove('charged');
   // Reset coin wall
   coinWallActive = false; coinWallTimer = 0;
   wallLeft.mesh.position.y = WALL_Y_HIDDEN;
@@ -529,6 +646,12 @@ document.getElementById('mute-btn').addEventListener('click',()=>{
   const b=document.getElementById('mute-btn');
   b.textContent=muted?'🔇':'🔊';
   muted?b.classList.add('muted'):b.classList.remove('muted');
+});
+document.getElementById('giant-btn').addEventListener('click',()=>{
+  if(!giantCoinCharged) return;
+  giantCoinCharged = false;
+  document.getElementById('giant-btn').classList.remove('charged');
+  spawnGiantCoin();
 });
 renderer.domElement.addEventListener('click',(e)=>{if(e.target===renderer.domElement)dropCoin();});
 renderer.domElement.addEventListener('mousemove',(e)=>{
