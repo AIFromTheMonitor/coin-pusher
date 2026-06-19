@@ -408,7 +408,6 @@ let tokens = 100;
 let pushTm = 0;
 let muted = false;
 let autoMode = false, autoDir = 1, autoLastDrop = 0;
-const AUTO_STEP = (DROP_X_MAX - DROP_X_MIN) / 6; // ~1.4 units per shot
 let gameStarted = false;
 setTimeout(() => gameStarted = true, 4000);
 let platZ = PLAT_Z_MIN;
@@ -475,6 +474,7 @@ function seedCoins(){
 // ─── DROP COIN ─────────────────────────────
 let dropX = 0;
 const DROP_X_MIN = -PLAT_W/2+0.5, DROP_X_MAX = PLAT_W/2-0.5;
+const AUTO_STEP = (DROP_X_MAX - DROP_X_MIN) / 6; // ~1.4 units per shot
 
 const indGeo = new THREE.BoxGeometry(0.06, 0.4, 0.06);
 const indMat = new THREE.MeshBasicMaterial({color:0xffffff, transparent:true, opacity:0.7});
