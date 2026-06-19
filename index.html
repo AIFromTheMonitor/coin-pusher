@@ -27,7 +27,7 @@ canvas{display:block}
 .level-bar{width:60px;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden}
 .level-fill{height:100%;border-radius:3px;transition:width 0.3s}
 .level-fill.coin{background:linear-gradient(90deg,#00ddff,#00aacc)}
-.level-fill.diamond{background:linear-gradient(90deg,#44aaff,#88ccff)}
+.level-fill.diamond{background:linear-gradient(90deg,#44ff44,#88ff88)}
 .level-fill.gem{background:linear-gradient(90deg,#ff44aa,#ff88cc)}
 .combo-fire{color:#ff4400;text-shadow:0 0 40px rgba(255,68,0,0.5)}
 .combo-cascade{color:#ff8800;text-shadow:0 0 60px rgba(255,136,0,0.6)}
@@ -185,7 +185,7 @@ const coinPink = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0.5, 
 const coinCyan = new THREE.MeshPhysicalMaterial({color:0x00ddff, metalness:0.5, roughness:0.06, emissive:0x0099cc, emissiveIntensity:0.7, clearcoat:0.2, envMapIntensity:2.5});
 
 // Diamond & Gem collectibles
-const diaMat = new THREE.MeshPhysicalMaterial({color:0x44aaff, metalness:0.3, roughness:0.06, emissive:0x2266cc, emissiveIntensity:0.8, clearcoat:0.3});
+const diaMat = new THREE.MeshPhysicalMaterial({color:0x44ff44, metalness:0.3, roughness:0.06, emissive:0x22cc22, emissiveIntensity:0.8, clearcoat:0.3});
 const gemMat = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0.3, roughness:0.04, emissive:0xcc2288, emissiveIntensity:0.8, clearcoat:0.3});
 
 // ─── DIMENSIONS ─────────────────────────────
@@ -441,6 +441,9 @@ world.createCollider(RAPIER.ColliderDesc.cuboid(SW/2, 0.02, SD/2).setFriction(0.
 // Safety floor behind back wall — catches coins that go over/under
 world.createCollider(RAPIER.ColliderDesc.cuboid(SW/2+0.5, 0.02, 1.2).setFriction(0.45),
   world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, shelfTop - 0.02, -SD/2 - 0.8)));
+// Catch-all floor far below — giant coin / anything that clips through won't fall forever
+world.createCollider(RAPIER.ColliderDesc.cuboid(SW*2, 0.05, SW*2).setFriction(0.3),
+  world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0, shelfTop - 1.5, 0)));
 
 // Side walls — tall enough to contain coins bouncing off back wall
 [[-SW/2-0.04],[SW/2+0.04]].forEach(([x])=>{
@@ -617,8 +620,8 @@ function spawnGiantCoin(){
 
 // ─── SPECIAL DROP (diamond/gem) ──────────────
 function spawnSpecialDrop(type){
-  const x = dropX + (Math.random()-0.5)*0.5;
-  const z = BACK_Z + 0.8;  // Above the stacked coins
+  const x = Math.max(DROP_X_MIN, Math.min(DROP_X_MAX, dropX + (Math.random()-0.5) * 2.0));
+  const z = BACK_Z + 0.3 + Math.random() * 1.5;
   const y = PLAT_TOP + 2.0;
   spawnCoin(x, y, z, type, 0, 0, 2.5);  // Forward nudge so it doesn't just sit there
   playSound(type==='gem'?180:140, 0.25);
@@ -740,7 +743,7 @@ function updateLevelPopup(){
   function row(icon, cur, need, fillClass){
     const pct = Math.min(100, (cur/need)*100);
     const done = cur >= need;
-    html += `<div class="req${done?' done':''}">${icon} ${cur}/${need}<div class="bar"><div class="fill ${fillClass}" style="width:${pct}%;background:${done?'#00ff88':fillClass==='diamond'?'#44aaff':fillClass==='gem'?'#ff44aa':'#00ddff'}"></div></div></div>`;
+    html += `<div class="req${done?' done':''}">${icon} ${cur}/${need}<div class="bar"><div class="fill ${fillClass}" style="width:${pct}%;background:${done?'#00ff88':fillClass==='diamond'?'#44ff44':fillClass==='gem'?'#ff44aa':'#00ddff'}"></div></div></div>`;
   }
   row('🪙', collected.coins, lv.coins, 'coin');
   if(lv.diamonds>0) row('💎', collected.diamonds, lv.diamonds, 'diamond');
