@@ -597,7 +597,7 @@ const giantCoinMat = new THREE.MeshPhysicalMaterial({color:0xff44aa, metalness:0
 
 function spawnGiantCoin(){
   const x = Math.max(DROP_X_MIN, Math.min(DROP_X_MAX, dropX + (Math.random()-0.5) * 6.0));
-  const z = BACK_Z + 0.3 + Math.random() * 3.5;
+  const z = BACK_Z + 0.3 + Math.random() * 2.5;
   const y = PLAT_TOP + 2.5;
   const vx = (Math.random()-0.5) * 0.8;
   const vz = 1.5 + Math.random() * 1.5;
@@ -777,23 +777,29 @@ function collectCoin(mesh, body){
   document.getElementById('score').textContent = tokens;
   playCollect();
   const c=document.getElementById('combo');
-  if(combo>=12){c.textContent=`🎰 JACKPOT x${combo}! ${mult}x`;c.className='combo-jackpot';
+  if(combo>=8){c.textContent=`🎰 JACKPOT x${combo}! ${mult}x`;c.className='combo-jackpot';
     if(!giantCoinCharged){ giantCoinCharged=true; document.getElementById('giant-btn').classList.add('charged'); }
     if(!gemSent){ gemSent=true; spawnSpecialDrop('gem'); }
   }
-  else if(combo>=8){c.textContent=`🎰 JACKPOT x${combo}! ${mult}x`;c.className='combo-jackpot';
+  else if(combo>=6){c.textContent=`🎰 JACKPOT x${combo}! ${mult}x`;c.className='combo-jackpot';
     if(!giantCoinCharged){ giantCoinCharged=true; document.getElementById('giant-btn').classList.add('charged'); }
   }
-  else if(combo>=6){c.textContent=`🌊 CASCADE x${combo}! ${mult}x`;c.className='combo-cascade';
+  else if(combo>=4){c.textContent=`🌊 CASCADE x${combo}! ${mult}x`;c.className='combo-cascade';
     if(!diamondSent){ diamondSent=true; spawnSpecialDrop('diamond'); }
   }
-  else if(combo>=4){c.textContent=`🌊 CASCADE x${combo}! ${mult}x`;c.className='combo-cascade';}
   else if(combo>=2){c.innerHTML=`🔥 ${combo}x COMBO &middot; ${mult}x`;c.className='combo-fire';}
   else c.style.opacity=0;
   if(combo>=2){c.style.opacity=1;clearTimeout(c._t);c._t=setTimeout(()=>c.style.opacity=0,2500);}
   // 5% chance to activate coin wall
   if(!coinWallActive && Math.random() < 0.05){
     activateCoinWall();
+  }
+  // Random bonus drops (4% diamond, 1% gem) — independent of combo
+  const rr = Math.random();
+  if(rr < 0.01){
+    spawnSpecialDrop('gem');
+  } else if(rr < 0.05){
+    spawnSpecialDrop('diamond');
   }
 }
 
