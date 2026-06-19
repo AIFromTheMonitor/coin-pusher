@@ -133,6 +133,7 @@ canvas{display:block}
   <div id="btn-panel">
     <button id="mute-btn" class="btn-icon" title="Mute">🔊</button>
     <button id="auto-btn" class="btn-icon" title="Auto-drop">⚡</button>
+    <button id="menu-btn" class="btn-icon" title="Menu">🏠</button>
     <button id="reset-btn" class="btn-icon" title="Restart">🔄</button>
   </div>
 </div>
@@ -576,6 +577,17 @@ function dropCoin(){
   playSound(400, 0.08);
   indMat.opacity = 1.0;
   setTimeout(() => indMat.opacity = 0.7, 100);
+  // Game over when no tokens left
+  if (tokens <= 0) {
+    setTimeout(() => { gameOver(); }, 1500);
+  }
+}
+function gameOver(){
+  document.getElementById('status').textContent = '💀 GAME OVER';
+  setTimeout(() => {
+    saveCurrentRecord();
+    showLeaderboard();
+  }, 1000);
 }
 
 // ─── GIANT COIN ─────────────────────────────
@@ -895,24 +907,26 @@ function loop(time) {
 }
 
 // ─── INPUT ─────────────────────────────────
-function saveAndReset(){
-  // Save record to leaderboard
+function saveCurrentRecord(){
   const name = localStorage.getItem('cp_playerName') || 'Player';
   const elapsed = sessionStart > 0 ? Math.floor((performance.now() - sessionStart) / 1000) : 0;
+  if (sessionCollected <= 0 && tokens === 100) return; // Nothing to save
   const record = {
     name,
     level: currentLevel + 1,
-    coins: sessionCollected,
+    coins: sessionCollected + (100 - tokens), // Count ALL tokens used + collected
     time: elapsed,
     date: new Date().toISOString().slice(0, 10)
   };
-  if (sessionCollected > 0) {
-    const records = JSON.parse(localStorage.getItem('cp_records') || '[]');
-    records.push(record);
-    records.sort((a, b) => b.coins - a.coins);
-    if (records.length > 100) records.length = 100;
-    localStorage.setItem('cp_records', JSON.stringify(records));
-  }
+  const records = JSON.parse(localStorage.getItem('cp_records') || '[]');
+  records.push(record);
+  records.sort((a, b) => b.coins - a.coins);
+  if (records.length > 100) records.length = 100;
+  localStorage.setItem('cp_records', JSON.stringify(records));
+}
+
+function saveAndReset(){
+  saveCurrentRecord();
   // Reset game state
   autoMode = false;
   document.getElementById('auto-btn').classList.remove('active');
@@ -1007,10 +1021,16 @@ document.getElementById('menu-play').addEventListener('click', startGame);
 document.getElementById('menu-name').addEventListener('keydown', (e) => { if (e.key === 'Enter') startGame(); });
 document.getElementById('menu-scores').addEventListener('click', showLeaderboard);
 document.getElementById('lb-back').addEventListener('click', () => {
-  document.getElementById('lb-overlay').style.display = 'none';
-  updateMenuPreview();
+  location.reload();
 });
 document.getElementById('reset-btn').addEventListener('click', saveAndReset);
+document.getElementById('menu-btn').addEventListener('click', () => {
+  saveCurrentRecord();
+  location.reload();
+});
+addEventListener('beforeunload', () => {
+  saveCurrentRecord();
+});
 
 loop(performance.now());
 document.getElementById('mute-btn').addEventListener('click',()=>{
