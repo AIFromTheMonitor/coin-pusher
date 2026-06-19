@@ -39,6 +39,9 @@ canvas{display:block}
 #giant-btn.charged{display:block}
 @keyframes giantPulse{from{box-shadow:0 0 15px rgba(255,100,0,0.4)}to{box-shadow:0 0 40px rgba(255,100,0,0.9)}}
 #reset-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.8)}
+#auto-btn{position:fixed;top:20px;right:72px;pointer-events:all;cursor:pointer;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.35);font-size:14px;padding:8px 12px;border-radius:8px;font-family:inherit;transition:all 0.2s;z-index:20;font-weight:700}
+#auto-btn:hover{background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.6)}
+#auto-btn.active{color:#00ff88;border-color:#00ff88;background:rgba(0,255,136,0.12);text-shadow:0 0 12px rgba(0,255,136,0.5);box-shadow:0 0 16px rgba(0,255,136,0.25)}
 #status{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.15);font-size:11px;letter-spacing:2px}
 #wall-indicator{position:absolute;bottom:140px;left:50%;transform:translateX(-50%);font-size:18px;font-weight:900;color:#ff44aa;text-shadow:0 0 30px rgba(255,68,170,0.6);opacity:0;transition:opacity 0.3s;white-space:nowrap}
 #wall-indicator.active{opacity:1;animation:wallPulse 1s infinite alternate}
@@ -58,6 +61,7 @@ canvas{display:block}
   <div id="status">▼ Drop coins ▼</div>
   <div id="wall-indicator">🧱 WALL 15s</div>
   <button id="mute-btn" title="Mute">🔊</button>
+  <button id="auto-btn" title="Auto-drop">⚡</button>
   <button id="reset-btn" title="Restart">🔄</button>
 </div>
 <script type="importmap">
@@ -403,6 +407,8 @@ let meshes = new Map(), bodies = new Map(), coinTypes = new Map();
 let tokens = 100;
 let pushTm = 0;
 let muted = false;
+let autoMode = false, autoDir = 1, autoLastDrop = 0;
+const AUTO_STEP = (DROP_X_MAX - DROP_X_MIN) / 6; // ~1.4 units per shot
 let gameStarted = false;
 setTimeout(() => gameStarted = true, 4000);
 let platZ = PLAT_Z_MIN;
@@ -745,6 +751,18 @@ function loop(time){
   animateSparkles(backSpark, sparkTime);
   animateSparkles(frontSpark, sparkTime);
   
+  // Auto-drop: fire every 250ms, advance shooter by AUTO_STEP each shot
+  if (autoMode && gameStarted && time - autoLastDrop > 250) {
+    if (tokens > 0) {
+      dropCoin();
+      autoLastDrop = time;
+      dropX += autoDir * AUTO_STEP;
+      // Bounce at edges
+      if (dropX >= DROP_X_MAX) { dropX = DROP_X_MAX; autoDir = -1; }
+      if (dropX <= DROP_X_MIN) { dropX = DROP_X_MIN; autoDir = 1; }
+    }
+  }
+  
   const toRemove=[];
   for(const [h,mesh] of meshes){
     const body=bodies.get(mesh.uuid);
@@ -774,6 +792,9 @@ function loop(time){
 // ─── INPUT ─────────────────────────────────
 document.getElementById('reset-btn').addEventListener('click',()=>{
   // Clear all existing coins
+  // Disable auto mode
+  autoMode = false;
+  document.getElementById('auto-btn').classList.remove('active');
   for(const [h,mesh] of meshes){
     const body = bodies.get(mesh.uuid);
     if(body){ world.removeRigidBody(body); }
@@ -805,6 +826,18 @@ document.getElementById('mute-btn').addEventListener('click',()=>{
   const b=document.getElementById('mute-btn');
   b.textContent=muted?'🔇':'🔊';
   muted?b.classList.add('muted'):b.classList.remove('muted');
+});
+document.getElementById('auto-btn').addEventListener('click',()=>{
+  autoMode = !autoMode;
+  const b = document.getElementById('auto-btn');
+  if (autoMode) {
+    b.classList.add('active');
+    autoDir = 1;
+    autoLastDrop = performance.now();
+    dropX = DROP_X_MIN; // start from left edge
+  } else {
+    b.classList.remove('active');
+  }
 });
 document.getElementById('giant-btn').addEventListener('click',()=>{
   if(!giantCoinCharged) return;
